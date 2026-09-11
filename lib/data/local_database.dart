@@ -70,7 +70,7 @@ class LocalDatabase {
   Future<Database> _openDatabase() async {
     // Cette méthode n'est jamais appelée sur le Web (voir getter ci‑dessus).
     final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'suivi_meteo_iot.db');
+    final path = join(dbPath, 'meteo.db');
 
     return openDatabase(
       path,

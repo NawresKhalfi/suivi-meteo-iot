@@ -3,17 +3,17 @@ import 'alerts_page.dart';
 import 'iot_sensors_page.dart';
 
 void main() {
-  runApp(const SuiviMeteoApp());
+  runApp(const MeteoApp());
 }
 
-class SuiviMeteoApp extends StatelessWidget {
-  const SuiviMeteoApp({super.key});
+class MeteoApp extends StatelessWidget {
+  const MeteoApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Station Météo IoT',
+      title: 'Météo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: const Color(0xFFF4F7FB),
@@ -66,7 +66,7 @@ class DashboardScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
                   Text(
-                    'Station Météo IoT',
+                    'Météo',
                     style: TextStyle(
                       color: Colors.black87,
                       fontSize: 16,
@@ -238,8 +238,8 @@ class WeatherCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     gradient: LinearGradient(
                       colors: [
-                        color.withOpacity(0.95),
-                        color.withOpacity(0.7),
+                        color.withValues(alpha: 0.95),
+                        color.withValues(alpha: 0.7),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,

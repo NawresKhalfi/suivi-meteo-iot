@@ -1,11 +1,11 @@
 {
-    "name": "suivi_meteo_iot",
-    "short_name": "suivi_meteo_iot",
+    "name": "Météo",
+    "short_name": "Météo",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Météo",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

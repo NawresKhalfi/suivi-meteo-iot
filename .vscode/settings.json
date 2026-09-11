@@ -1,0 +1,6 @@
+{
+  "java.import.gradle.enabled": false,
+  "java.gradle.buildServer.enabled": false,
+  "gradle.autoDetect": "off",
+  "logicalProperties.ignoreLanguageIds": ["dart"]
+}

@@ -1,4 +1,4 @@
-package com.example.suivi_meteo_iot
+package com.example.meteo
 
 import io.flutter.embedding.android.FlutterActivity
 
