@@ -1,33 +1,59 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'alerts_page.dart';
+import 'app.dart';
+import 'core/storage/local_preferences.dart';
+import 'features/weather/application/weather_controller.dart';
+import 'features/weather/data/weather_repository.dart';
+import 'features/cities/application/cities_controller.dart';
+import 'features/cities/data/cities_store.dart';
+import 'features/alerts/application/alerts_controller.dart';
+import 'features/alerts/data/alerts_repository.dart';
 import 'iot_sensors_page.dart';
 
-void main() {
-  runApp(const MeteoApp());
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
 }
 
-class MeteoApp extends StatelessWidget {
-  const MeteoApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Météo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: const Color(0xFFF4F7FB),
-        cardTheme: CardThemeData(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 3,
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        ),
-      ),
-      home: const DashboardScreen(),
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final preferences = await SharedPreferences.getInstance();
+  FirebaseApp? firebaseApp;
+  try {
+    firebaseApp = await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(
+      _firebaseMessagingBackgroundHandler,
     );
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+  } on FirebaseException {
+    firebaseApp = null;
   }
+  runApp(
+    ProviderScope(
+      overrides: [
+        weatherLocalStoreProvider.overrideWithValue(
+          SharedPreferencesWeatherLocalStore(LocalPreferences(preferences)),
+        ),
+        citiesStoreProvider.overrideWithValue(
+          SharedPreferencesCitiesStore(LocalPreferences(preferences)),
+        ),
+        alertNotificationServiceProvider.overrideWithValue(firebaseApp == null
+            ? SharedPreferencesAlertNotificationService(
+                LocalPreferences(preferences),
+              )
+            : FirebaseAlertNotificationService(LocalPreferences(preferences))),
+      ],
+      child: const MeteoApp(),
+    ),
+  );
 }
 
 class DashboardScreen extends StatelessWidget {
@@ -55,11 +81,7 @@ class DashboardScreen extends StatelessWidget {
                     end: Alignment.bottomRight,
                   ),
                 ),
-                child: const Icon(
-                  Icons.cloud,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                child: const Icon(Icons.cloud, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 12),
               Column(
@@ -75,28 +97,23 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   Text(
                     'Surveillance environnementale en temps réel',
-                    style: TextStyle(
-                      color: Colors.black54,
-                      fontSize: 11,
-                    ),
+                    style: TextStyle(color: Colors.black54, fontSize: 11),
                   ),
                 ],
               ),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE6F6EC),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
                   children: const [
-                    Icon(
-                      Icons.circle,
-                      color: Color(0xFF27AE60),
-                      size: 10,
-                    ),
+                    Icon(Icons.circle, color: Color(0xFF27AE60), size: 10),
                     SizedBox(width: 6),
                     Text(
                       'Connecté',
@@ -123,11 +140,7 @@ class DashboardScreen extends StatelessWidget {
           ),
         ),
         body: const TabBarView(
-          children: [
-            DashboardTab(),
-            IotSensorsPage(),
-            AlertsPage(),
-          ],
+          children: [DashboardTab(), IotSensorsPage(), AlertsPage()],
         ),
       ),
     );
@@ -245,11 +258,7 @@ class WeatherCard extends StatelessWidget {
                       end: Alignment.bottomRight,
                     ),
                   ),
-                  child: Icon(
-                    icon,
-                    color: Colors.white,
-                    size: 22,
-                  ),
+                  child: Icon(icon, color: Colors.white, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -260,11 +269,7 @@ class WeatherCard extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                const Icon(
-                  Icons.more_vert,
-                  size: 18,
-                  color: Colors.black26,
-                ),
+                const Icon(Icons.more_vert, size: 18, color: Colors.black26),
               ],
             ),
             const SizedBox(height: 16),
@@ -283,10 +288,7 @@ class WeatherCard extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text(
                     unit,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.black54,
-                    ),
+                    style: const TextStyle(fontSize: 14, color: Colors.black54),
                   ),
                 ),
                 const Spacer(),
@@ -332,11 +334,7 @@ class ChartCard extends StatelessWidget {
   final String title;
   final String? subtitle;
 
-  const ChartCard({
-    super.key,
-    required this.title,
-    this.subtitle,
-  });
+  const ChartCard({super.key, required this.title, this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -348,19 +346,13 @@ class ChartCard extends StatelessWidget {
           children: [
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
             if (subtitle != null) ...[
               const SizedBox(height: 4),
               Text(
                 subtitle!,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.black54,
-                ),
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
               ),
             ],
             const SizedBox(height: 16),
@@ -369,17 +361,12 @@ class ChartCard extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: const Color(0xFFF5F7FB),
-                border: Border.all(
-                  color: Colors.grey,
-                ),
+                border: Border.all(color: Colors.grey),
               ),
               child: const Center(
                 child: Text(
                   'Graphique (48h) à implémenter',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.black45,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.black45),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -390,4 +377,3 @@ class ChartCard extends StatelessWidget {
     );
   }
 }
-
