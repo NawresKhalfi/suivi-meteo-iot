@@ -21,7 +21,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const InitApp());
+  runApp(const ProviderScope(child: InitApp()));
 }
 
 class _InitData {
@@ -30,76 +30,56 @@ class _InitData {
   _InitData(this.preferences, this.firebaseApp);
 }
 
-class InitApp extends StatelessWidget {
+// Use a FutureProvider for initialization so ProviderScope stays stable
+final initProvider = FutureProvider<_InitData>((ref) async {
+  final preferences = await SharedPreferences.getInstance();
+  FirebaseApp? firebaseApp;
+  try {
+    firebaseApp = await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(
+      _firebaseMessagingBackgroundHandler,
+    );
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+  } catch (e, st) {
+    // ignore: avoid_print
+    print('Firebase initialization skipped: $e');
+    // ignore: avoid_print
+    print(st);
+    firebaseApp = null;
+  }
+  return _InitData(preferences, firebaseApp);
+});
+
+class InitApp extends ConsumerWidget {
   const InitApp({super.key});
 
-  Future<_InitData> _initialize() async {
-    final preferences = await SharedPreferences.getInstance();
-    FirebaseApp? firebaseApp;
-    try {
-      firebaseApp = await Firebase.initializeApp();
-      FirebaseMessaging.onBackgroundMessage(
-        _firebaseMessagingBackgroundHandler,
-      );
-      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-    } catch (e, st) {
-      // If Firebase isn't configured (missing google-services.json / plist)
-      // initializing will throw. Log and continue with a null firebaseApp
-      // so the app can run without crash. The stacktrace should be visible
-      // in logs for debugging but not shown to the end user.
-      // ignore: avoid_print
-      print('Firebase initialization skipped: $e');
-      // ignore: avoid_print
-      print(st);
-      firebaseApp = null;
-    }
-    return _InitData(preferences, firebaseApp);
-  }
-
   @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<_InitData>(
-      future: _initialize(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const MaterialApp(
-            home: Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          // Log the error for debugging, but present a friendly message to
-          // the user instead of the raw stacktrace (e.g. missing Firebase
-          // config such as google-services.json or GoogleService-Info.plist).
-          // ignore: avoid_print
-          print('Init error: ${snapshot.error}');
-          return const MaterialApp(
-            home: Scaffold(
-              body: Center(
-                child: Text(
-                  'Initialisation partielle — certaines fonctionnalités (ex: notifications) sont désactivées.',
-                  textAlign: TextAlign.center,
-                ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final init = ref.watch(initProvider);
+    return init.when(
+      loading: () => const MaterialApp(
+        home: Scaffold(body: Center(child: CircularProgressIndicator())),
+      ),
+      error: (e, st) {
+        // ignore: avoid_print
+        print('Init error: $e');
+        return const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: Text(
+                'Initialisation partielle — certaines fonctionnalités (ex: notifications) sont désactivées.',
+                textAlign: TextAlign.center,
               ),
             ),
-          );
-        }
-
-        final data = snapshot.data;
-        if (data == null) {
-          return const MaterialApp(
-            home: Scaffold(
-              body: Center(child: Text('Initialisation échouée')),
-            ),
-          );
-        }
-
+          ),
+        );
+      },
+      data: (data) {
+        // Now that init is complete, we can safely provide overrides.
         return ProviderScope(
           overrides: [
             weatherLocalStoreProvider.overrideWithValue(
