@@ -21,39 +21,88 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final preferences = await SharedPreferences.getInstance();
-  FirebaseApp? firebaseApp;
-  try {
-    firebaseApp = await Firebase.initializeApp();
-    FirebaseMessaging.onBackgroundMessage(
-      _firebaseMessagingBackgroundHandler,
-    );
-    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-  } on FirebaseException {
-    firebaseApp = null;
+  runApp(const InitApp());
+}
+
+class _InitData {
+  final SharedPreferences preferences;
+  final FirebaseApp? firebaseApp;
+  _InitData(this.preferences, this.firebaseApp);
+}
+
+class InitApp extends StatelessWidget {
+  const InitApp({super.key});
+
+  Future<_InitData> _initialize() async {
+    final preferences = await SharedPreferences.getInstance();
+    FirebaseApp? firebaseApp;
+    try {
+      firebaseApp = await Firebase.initializeApp();
+      FirebaseMessaging.onBackgroundMessage(
+        _firebaseMessagingBackgroundHandler,
+      );
+      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    } on FirebaseException {
+      firebaseApp = null;
+    }
+    return _InitData(preferences, firebaseApp);
   }
-  runApp(
-    ProviderScope(
-      overrides: [
-        weatherLocalStoreProvider.overrideWithValue(
-          SharedPreferencesWeatherLocalStore(LocalPreferences(preferences)),
-        ),
-        citiesStoreProvider.overrideWithValue(
-          SharedPreferencesCitiesStore(LocalPreferences(preferences)),
-        ),
-        alertNotificationServiceProvider.overrideWithValue(firebaseApp == null
-            ? SharedPreferencesAlertNotificationService(
-                LocalPreferences(preferences),
-              )
-            : FirebaseAlertNotificationService(LocalPreferences(preferences))),
-      ],
-      child: const MeteoApp(),
-    ),
-  );
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_InitData>(
+      future: _initialize(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const MaterialApp(
+            home: Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: Text('Initialisation error: ${snapshot.error}'),
+              ),
+            ),
+          );
+        }
+
+        final data = snapshot.data;
+        if (data == null) {
+          return const MaterialApp(
+            home: Scaffold(
+              body: Center(child: Text('Initialisation échouée')),
+            ),
+          );
+        }
+
+        return ProviderScope(
+          overrides: [
+            weatherLocalStoreProvider.overrideWithValue(
+              SharedPreferencesWeatherLocalStore(LocalPreferences(data.preferences)),
+            ),
+            citiesStoreProvider.overrideWithValue(
+              SharedPreferencesCitiesStore(LocalPreferences(data.preferences)),
+            ),
+            alertNotificationServiceProvider.overrideWithValue(data.firebaseApp == null
+                ? SharedPreferencesAlertNotificationService(
+                    LocalPreferences(data.preferences),
+                  )
+                : FirebaseAlertNotificationService(LocalPreferences(data.preferences))),
+          ],
+          child: const MeteoApp(),
+        );
+      },
+    );
+  }
 }
 
 class DashboardScreen extends StatelessWidget {
