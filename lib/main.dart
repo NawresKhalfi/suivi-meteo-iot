@@ -46,7 +46,15 @@ class InitApp extends StatelessWidget {
         badge: true,
         sound: true,
       );
-    } on FirebaseException {
+    } catch (e, st) {
+      // If Firebase isn't configured (missing google-services.json / plist)
+      // initializing will throw. Log and continue with a null firebaseApp
+      // so the app can run without crash. The stacktrace should be visible
+      // in logs for debugging but not shown to the end user.
+      // ignore: avoid_print
+      print('Firebase initialization skipped: $e');
+      // ignore: avoid_print
+      print(st);
       firebaseApp = null;
     }
     return _InitData(preferences, firebaseApp);
@@ -66,10 +74,18 @@ class InitApp extends StatelessWidget {
         }
 
         if (snapshot.hasError) {
-          return MaterialApp(
+          // Log the error for debugging, but present a friendly message to
+          // the user instead of the raw stacktrace (e.g. missing Firebase
+          // config such as google-services.json or GoogleService-Info.plist).
+          // ignore: avoid_print
+          print('Init error: ${snapshot.error}');
+          return const MaterialApp(
             home: Scaffold(
               body: Center(
-                child: Text('Initialisation error: ${snapshot.error}'),
+                child: Text(
+                  'Initialisation partielle — certaines fonctionnalités (ex: notifications) sont désactivées.',
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
           );
