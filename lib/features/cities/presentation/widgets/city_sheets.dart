@@ -354,3 +354,37 @@ class SuggestRow extends StatelessWidget {
     );
   }
 }
+
+/// Demande de partage de la position avant la « Mesure localisée ».
+/// Renvoie `true` si l'utilisateur accepte.
+class ShareLocationSheet extends StatelessWidget {
+  const ShareLocationSheet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSheet(
+      title: 'Partager votre position ?',
+      children: [
+        const Text(
+          'Votre position sera ajoutée à vos villes et définie comme ville '
+          'par défaut, pour suivre la météo là où vous vous trouvez.',
+          style: TextStyle(
+            fontSize: 13.5,
+            height: 1.55,
+            color: AppColors.inkSoft,
+          ),
+        ),
+        const SizedBox(height: 14),
+        AppButton(
+          label: 'Partager ma position',
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
+        AppButton(
+          label: 'Annuler',
+          style: AppButtonStyle.ghost,
+          onPressed: () => Navigator.of(context).pop(false),
+        ),
+      ],
+    );
+  }
+}

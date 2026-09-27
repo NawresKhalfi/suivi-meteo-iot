@@ -11,8 +11,8 @@ const alertSource = 'Analyse des prévisions Open-Meteo';
 /// Déduit les alertes météo des prochaines 48 h à partir des prévisions.
 ///
 /// Seuils inspirés des critères de vigilance usuels (Météo-France / INM) :
-/// orages, rafales, fortes pluies, neige, pluie verglaçante, chaleur, froid
-/// et UV.
+/// orages, rafales, pluie, risque d'incendie, neige, pluie verglaçante,
+/// chaleur, froid et UV.
 List<WeatherAlert> deriveAlerts(
   ForecastBundle bundle, {
   required String zone,
@@ -107,6 +107,64 @@ List<WeatherAlert> deriveAlerts(
         criteria:
             'Intensité ≥ ${format.precipitation(7.5)}/h '
             '(pic ${format.precipitation(peak)}/h).',
+      ),
+    );
+  }
+
+  // Pluie ordinaire : les épisodes orageux ou intenses ont déjà leur alerte.
+  for (final w in _windows(hours, (h) => h.precipitation >= 0.2)) {
+    if (w.max(hours, (h) => h.precipitation) >= 7.5 ||
+        w.any(hours, (h) => h.condition == WeatherCondition.thunderstorm)) {
+      continue;
+    }
+    final total = w.sum(hours, (h) => h.precipitation);
+    final chance = w.max(hours, (h) => h.precipitationProbability.toDouble());
+    alerts.add(
+      build(
+        kind: 'shower',
+        window: w,
+        title: 'Pluie prévue',
+        severity: AlertSeverity.information,
+        summary:
+            'Pluie attendue, cumul prévu de ${format.precipitation(total)} '
+            '(probabilité jusqu’à ${chance.round()} %). Prévoyez un parapluie '
+            'et roulez prudemment sur chaussée mouillée.',
+        criteria: 'Précipitations ≥ ${format.precipitation(0.2)}/h prévues.',
+      ),
+    );
+  }
+
+  // Temps propice aux feux : chaud, sec et venté, sans pluie.
+  bool fireWeather(HourlyForecast h) =>
+      h.temperature >= 30 &&
+      h.humidity <= 30 &&
+      (h.windSpeed >= 20 || h.windGust >= 40) &&
+      h.precipitation == 0;
+  for (final w in _windows(hours, fireWeather)) {
+    final severe = w.any(
+      hours,
+      (h) =>
+          h.temperature >= 35 &&
+          h.humidity <= 20 &&
+          (h.windSpeed >= 30 || h.windGust >= 55),
+    );
+    final temp = w.max(hours, (h) => h.temperature);
+    final wind = w.max(hours, (h) => h.windGust);
+    alerts.add(
+      build(
+        kind: 'fire',
+        window: w,
+        title: severe ? "Risque d'incendie très élevé" : "Risque d'incendie",
+        severity: severe ? AlertSeverity.danger : AlertSeverity.vigilance,
+        summary:
+            'Air chaud et sec (${format.temperatureWithUnit(temp)}) avec '
+            "rafales jusqu'à ${format.windSpeed(wind)} : un départ de feu peut "
+            'se propager très vite. Pas de feu, de barbecue ni de mégot en '
+            'extérieur ; en cas de fumée, appelez les secours.',
+        criteria:
+            'Température ≥ ${format.temperatureWithUnit(30)}, humidité ≤ 30 % '
+            'et vent ≥ ${format.windSpeed(20)} (ou rafales ≥ '
+            '${format.windSpeed(40)}), sans pluie.',
       ),
     );
   }

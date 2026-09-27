@@ -79,9 +79,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         mapController: _map,
                         options: MapOptions(
                           initialCenter: LatLng(city.latitude, city.longitude),
-                          initialZoom: 8,
+                          initialZoom: 10,
                           minZoom: 3,
-                          maxZoom: 12,
+                          maxZoom: 17,
                           backgroundColor: const Color(0xFFB7E4FA),
                           onMapReady: () => _mapReady = true,
                           interactionOptions: const InteractionOptions(
@@ -92,9 +92,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         children: [
                           TileLayer(
                             urlTemplate:
-                                'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                            subdomains: const ['a', 'b', 'c', 'd'],
-                            retinaMode: RetinaMode.isHighDensity(context),
+                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            maxNativeZoom: 19,
                             userAgentPackageName: 'com.meteo.suivi_meteo_iot',
                             tileProvider: tiles,
                           ),
@@ -301,7 +300,7 @@ class _Attribution extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: const Text(
-        '© OpenStreetMap · © CARTO · RainViewer · Open-Meteo',
+        '© OpenStreetMap · RainViewer · Open-Meteo',
         style: TextStyle(fontSize: 9, color: AppColors.inkSoft),
       ),
     );

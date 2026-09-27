@@ -2,16 +2,19 @@
 
 Refonte selon le prototype `weather_prototype.html` (5 onglets : Accueil,
 Prévisions, Carte, Villes, Réglages). Données réelles : Open-Meteo (météo,
-qualité de l'air, géocodage), RainViewer (radar), fonds CARTO/OpenStreetMap.
-Les alertes sont déduites des prévisions (orages, rafales, fortes pluies,
-neige, verglas, chaleur, froid, UV) et historisées 48 h par ville.
+qualité de l'air, géocodage), RainViewer (radar), fond OpenStreetMap.
+Les alertes sont déduites des prévisions (orages, rafales, pluie, fortes
+pluies, risque d'incendie, neige, verglas, chaleur, froid, UV), complétées par
+les catastrophes en cours à proximité signalées par GDACS (feux de forêt,
+inondations, séismes, cyclones, volcans, sécheresses), et historisées 48 h
+par ville.
 
 Source de vérité : `spec/Epics_UserStories_Meteo.xlsx`.
 
 | Epic | Fonctionnalité | Stories | Statut |
 |---|---|---:|---|
 | E01 | Météo locale en temps réel | US01-US05 | ✅ implémenté |
-| E02 | Alertes météo et catastrophes naturelles | US06-US09 | 🟨 en cours (push FCM à configurer) |
+| E02 | Alertes météo et catastrophes naturelles | US06-US09 | ✅ implémenté (notifications locales) |
 | E03 | Prévisions météo sur 24 heures | US10-US12 | ✅ implémenté |
 | E04 | Prévisions météo sur 10 jours | US13-US15 | ✅ implémenté |
 | E05 | Probabilité de pluie sur 10 jours | US16-US17 | ✅ implémenté |
@@ -21,7 +24,7 @@ Source de vérité : `spec/Epics_UserStories_Meteo.xlsx`.
 | E09 | Lever / coucher du soleil et phases lunaires | US24-US25 | ✅ implémenté |
 | E10 | Gestion des villes | US26-US29 | ✅ implémenté |
 | E11 | Paramètres d'unités et de formats | US30-US32 | ✅ implémenté |
-| E12 | Notifications et widgets d'écran d'accueil | US33-US34 | 🟨 réglages + aperçu (widget natif à faire) |
+| E12 | Notifications et widgets d'écran d'accueil | US33-US34 | 🟨 widget natif Android ; iOS à faire |
 
 ## E01 - Météo locale en temps réel
 
@@ -37,7 +40,7 @@ Source de vérité : `spec/Epics_UserStories_Meteo.xlsx`.
 
 | Story | Statut |
 |---|---|
-| US06 - Notification push sur alerte de zone | 🟨 FCM intégré, fichiers Firebase à ajouter |
+| US06 - Notification push sur alerte de zone | ✅ notifications locales : vérification en arrière-plan toutes les ~30 min (Android WorkManager, iOS BGTaskScheduler) ; push FCM prêt mais sans serveur d'envoi |
 | US07 - Détail complet d'une alerte | ✅ implémenté |
 | US08 - Tri par gravité | ✅ implémenté |
 | US09 - Historique des 48 dernières heures | ✅ implémenté |
@@ -115,4 +118,4 @@ Source de vérité : `spec/Epics_UserStories_Meteo.xlsx`.
 | Story | Statut |
 |---|---|
 | US33 - Activer/désactiver alertes et résumé quotidien | 🟨 préférences enregistrées ; envoi du résumé non planifié |
-| US34 - Widget d'écran d'accueil | 🟨 aperçu dans Réglages ; widget natif iOS/Android à développer |
+| US34 - Widget d'écran d'accueil | 🟨 Android : widget natif, ajout depuis Réglages (dialogue + confirmation système), mis à jour à l'ouverture et toutes les ~30 min ; iOS : extension WidgetKit à créer |

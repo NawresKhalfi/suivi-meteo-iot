@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_sheet.dart';
 import '../../../../core/widgets/common.dart';
 import '../../../../core/widgets/toast.dart';
 import '../../../../core/widgets/weather_icon.dart';
@@ -10,6 +12,7 @@ import '../../../alerts/application/alerts_controller.dart';
 import '../../../cities/application/cities_controller.dart';
 import '../../../weather/application/weather_controller.dart';
 import '../../../weather/domain/weather_condition.dart';
+import '../../application/home_screen_widget_controller.dart';
 import '../../application/settings_controller.dart';
 import '../../domain/unit_settings.dart';
 import '../widgets/settings_widgets.dart';
@@ -213,7 +216,7 @@ class SettingsScreen extends ConsumerWidget {
               padding: EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: Text(
                 'Données météo et qualité de l’air : Open-Meteo · Radar : RainViewer · '
-                'Fonds de carte : © OpenStreetMap, © CARTO',
+                'Fonds de carte : © OpenStreetMap',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 11,
@@ -254,66 +257,200 @@ class _WidgetPreview extends ConsumerWidget {
               ),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: AppColors.shadowMd,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            city.name,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xD9FFFFFF),
+          GestureDetector(
+            onTap: () => _offerHomeScreenWidget(context, ref),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: AppColors.shadowMd,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              city.name,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xD9FFFFFF),
+                              ),
                             ),
-                          ),
-                          Text(
-                            current == null
-                                ? '--°'
-                                : format.temperature(current.temperature),
-                            style: const TextStyle(
-                              fontFamily: AppFonts.display,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 30,
-                              color: Colors.white,
+                            Text(
+                              current == null
+                                  ? '--°'
+                                  : format.temperature(current.temperature),
+                              style: const TextStyle(
+                                fontFamily: AppFonts.display,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 30,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    if (current != null)
-                      HeroWeatherIcon(
-                        current.condition.icon(isDay: current.isDay),
-                        size: 40,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  current == null
-                      ? 'Aperçu du widget'
-                      : '${current.condition.label(isDay: current.isDay)} · '
-                            'aperçu — mis à jour toutes les 30 min',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xB3FFFFFF),
+                      if (current != null)
+                        HeroWeatherIcon(
+                          current.condition.icon(isDay: current.isDay),
+                          size: 40,
+                        ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Text(
+                    current == null
+                        ? 'Aperçu du widget'
+                        : '${current.condition.label(isDay: current.isDay)} · '
+                              'aperçu — mis à jour toutes les 30 min',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xB3FFFFFF),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.add_circle_outline_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          "Toucher pour l'ajouter à l'écran d'accueil",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Propose d'ajouter le widget, puis ouvre la confirmation du système.
+Future<void> _offerHomeScreenWidget(BuildContext context, WidgetRef ref) async {
+  final canPin = await ref.read(homeScreenWidgetServiceProvider).canPin();
+  if (!context.mounted) return;
+  final city = ref.read(citiesControllerProvider).defaultCityOrFirst;
+  final accepted = await showDialog<bool>(
+    context: context,
+    barrierColor: const Color(0x73091E30),
+    builder: (_) => _AddWidgetDialog(cityName: city.name, canPin: canPin),
+  );
+  if (accepted != true || !context.mounted) return;
+  try {
+    await pinHomeScreenWidget(ref);
+  } on Object {
+    if (context.mounted) {
+      showToast(context, "Impossible d'ajouter le widget sur ce téléphone");
+    }
+  }
+}
+
+class _AddWidgetDialog extends StatelessWidget {
+  const _AddWidgetDialog({required this.cityName, required this.canPin});
+
+  final String cityName;
+  final bool canPin;
+
+  @override
+  Widget build(BuildContext context) {
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+    final message = canPin
+        ? 'Affichez la température et le ciel de $cityName directement sur '
+              "l'écran d'accueil de votre téléphone. Le widget se met à jour "
+              'automatiquement toutes les 30 minutes environ.'
+        : isAndroid
+        ? "Votre écran d'accueil ne permet pas l'ajout automatique. Faites un "
+              "appui long sur l'écran d'accueil, choisissez « Widgets » puis "
+              '« Météo ».'
+        : "Le widget d'écran d'accueil est pour l'instant disponible "
+              'uniquement sur Android.';
+    return Dialog(
+      backgroundColor: AppColors.surface,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(22, 24, 22, 14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: AppColors.shadowMd,
+                ),
+                child: const Icon(
+                  Icons.widgets_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              canPin
+                  ? "Ajouter le widget à l'écran d'accueil ?"
+                  : 'Widget météo',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: AppFonts.display,
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13.5,
+                height: 1.5,
+                color: AppColors.inkSoft,
+              ),
+            ),
+            const SizedBox(height: 18),
+            if (canPin) ...[
+              AppButton(
+                label: 'Ajouter',
+                onPressed: () => Navigator.of(context).pop(true),
+              ),
+              AppButton(
+                label: 'Pas maintenant',
+                style: AppButtonStyle.ghost,
+                onPressed: () => Navigator.of(context).pop(false),
+              ),
+            ] else
+              AppButton(
+                label: "J'ai compris",
+                onPressed: () => Navigator.of(context).pop(false),
+              ),
+          ],
+        ),
       ),
     );
   }

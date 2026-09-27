@@ -14,20 +14,36 @@ class PulsingPin extends StatefulWidget {
 
 class _PulsingPinState extends State<PulsingPin>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 2200),
-  );
+  // Créé à la demande : l'instancier dans dispose() (via `late`) déclencherait
+  // une recherche d'ancêtre sur un élément désactivé.
+  AnimationController? _controller;
+
+  AnimationController get _pulseController =>
+      _controller ??= AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 2200),
+      );
 
   @override
   void initState() {
     super.initState();
-    if (widget.pulse) _controller.repeat();
+    if (widget.pulse) _pulseController.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant PulsingPin oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.pulse == oldWidget.pulse) return;
+    if (widget.pulse) {
+      _pulseController.repeat();
+    } else {
+      _controller?.stop();
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -40,9 +56,9 @@ class _PulsingPinState extends State<PulsingPin>
         children: [
           if (widget.pulse)
             AnimatedBuilder(
-              animation: _controller,
+              animation: _pulseController,
               builder: (context, _) {
-                final t = Curves.easeOut.transform(_controller.value);
+                final t = Curves.easeOut.transform(_pulseController.value);
                 return Container(
                   width: 18 + 30 * t,
                   height: 18 + 30 * t,

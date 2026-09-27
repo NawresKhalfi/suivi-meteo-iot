@@ -68,6 +68,8 @@ class UnconfiguredAlertNotificationService implements AlertNotificationService {
   Future<void> disable() async => _enabled = false;
 }
 
+/// Abonnement au sujet FCM `weather-alerts`. À brancher dans main.dart quand
+/// un serveur publiera les alertes sur ce sujet.
 class FirebaseAlertNotificationService implements AlertNotificationService {
   FirebaseAlertNotificationService(this._preferences);
 
@@ -96,20 +98,4 @@ class FirebaseAlertNotificationService implements AlertNotificationService {
     await _messaging.unsubscribeFromTopic('weather-alerts');
     await _preferences.saveAlertNotificationsEnabled(false);
   }
-}
-
-class SharedPreferencesAlertNotificationService
-    implements AlertNotificationService {
-  SharedPreferencesAlertNotificationService(this._preferences);
-
-  final LocalPreferences _preferences;
-
-  @override
-  bool get isEnabled => _preferences.alertNotificationsEnabled;
-
-  @override
-  Future<void> configure() => _preferences.saveAlertNotificationsEnabled(true);
-
-  @override
-  Future<void> disable() => _preferences.saveAlertNotificationsEnabled(false);
 }

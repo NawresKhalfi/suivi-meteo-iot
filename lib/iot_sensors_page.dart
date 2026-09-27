@@ -52,9 +52,7 @@ class _IotSystemInfoCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFFEFF6FF),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: const Color(0xFFDBEAFE),
-          ),
+          border: Border.all(color: const Color(0xFFDBEAFE)),
         ),
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -62,10 +60,7 @@ class _IotSystemInfoCard extends StatelessWidget {
           children: [
             const Text(
               'À propos du système IoT',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -90,18 +85,12 @@ class _IotSystemInfoCard extends StatelessWidget {
                 ),
                 SizedBox(width: 8),
                 Expanded(
-                  child: _InfoPill(
-                    label: 'Portée WiFi',
-                    value: '50-100 m',
-                  ),
+                  child: _InfoPill(label: 'Portée WiFi', value: '50-100 m'),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            const _InfoPill(
-              label: 'Autonomie batterie',
-              value: '7-30 jours',
-            ),
+            const _InfoPill(label: 'Autonomie batterie', value: '7-30 jours'),
           ],
         ),
       ),
@@ -113,10 +102,7 @@ class _InfoPill extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoPill({
-    required this.label,
-    required this.value,
-  });
+  const _InfoPill({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -131,18 +117,12 @@ class _InfoPill extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Colors.black54,
-            ),
+            style: const TextStyle(fontSize: 11, color: Colors.black54),
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -172,11 +152,7 @@ class _MainStationCard extends StatelessWidget {
                   end: Alignment.bottomRight,
                 ),
               ),
-              child: const Icon(
-                Icons.hub,
-                color: Colors.white,
-                size: 22,
-              ),
+              child: const Icon(Icons.hub, color: Colors.white, size: 22),
             ),
             const SizedBox(width: 12),
             Column(
@@ -184,36 +160,25 @@ class _MainStationCard extends StatelessWidget {
               children: const [
                 Text(
                   'Station principale',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
                 SizedBox(height: 2),
                 Text(
                   'ESP32 + DHT22',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.black54,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ],
             ),
             const Spacer(),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: const Color(0xFFE6F6EC),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 children: const [
-                  Icon(
-                    Icons.circle,
-                    color: Color(0xFF27AE60),
-                    size: 10,
-                  ),
+                  Icon(Icons.circle, color: Color(0xFF27AE60), size: 10),
                   SizedBox(width: 4),
                   Text(
                     'En Ligne',
@@ -319,11 +284,7 @@ class _SensorNodeCard extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.circle,
-                        color: statusColor,
-                        size: 10,
-                      ),
+                      Icon(Icons.circle, color: statusColor, size: 10),
                       const SizedBox(width: 4),
                       Text(
                         statusLabel,
@@ -349,70 +310,43 @@ class _SensorNodeCard extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text(
                   'ID: $id',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.black54,
-                  ),
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ],
             ),
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(
-                  Icons.place,
-                  size: 14,
-                  color: Colors.black45,
-                ),
+                const Icon(Icons.place, size: 14, color: Colors.black45),
                 const SizedBox(width: 4),
                 Text(
                   location,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.black54,
-                  ),
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                const Icon(
-                  Icons.battery_full,
-                  size: 16,
-                  color: Colors.black45,
-                ),
+                const Icon(Icons.battery_full, size: 16, color: Colors.black45),
                 const SizedBox(width: 4),
                 Text(
                   'Batterie $battery',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.black87,
-                  ),
+                  style: const TextStyle(fontSize: 12, color: Colors.black87),
                 ),
                 const Spacer(),
-                const Icon(
-                  Icons.network_wifi,
-                  size: 16,
-                  color: Colors.black45,
-                ),
+                const Icon(Icons.network_wifi, size: 16, color: Colors.black45),
                 const SizedBox(width: 4),
                 Text(
                   'Signal $signal',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.black87,
-                  ),
+                  style: const TextStyle(fontSize: 12, color: Colors.black87),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             const Text(
               'Capteurs actifs:',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.black54,
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.black54),
             ),
             const SizedBox(height: 6),
             Wrap(
@@ -421,10 +355,7 @@ class _SensorNodeCard extends StatelessWidget {
               children: tags
                   .map(
                     (t) => Chip(
-                      label: Text(
-                        t,
-                        style: const TextStyle(fontSize: 11),
-                      ),
+                      label: Text(t, style: const TextStyle(fontSize: 11)),
                       backgroundColor: const Color(0xFFEFF6FF),
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -435,10 +366,7 @@ class _SensorNodeCard extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               'Dernière mise à jour: $lastUpdate',
-              style: const TextStyle(
-                fontSize: 11,
-                color: Colors.black45,
-              ),
+              style: const TextStyle(fontSize: 11, color: Colors.black45),
             ),
           ],
         ),

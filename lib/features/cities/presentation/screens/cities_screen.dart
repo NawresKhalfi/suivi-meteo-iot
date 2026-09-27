@@ -14,6 +14,7 @@ import '../../../weather/application/weather_controller.dart';
 import '../../../weather/data/weather_repository.dart';
 import '../../../weather/domain/weather_condition.dart';
 import '../../application/cities_controller.dart';
+import '../../data/location_repository.dart';
 import '../../domain/city.dart';
 import '../widgets/city_sheets.dart';
 
@@ -62,6 +63,10 @@ class CitiesScreen extends ConsumerWidget {
                 const PageHeader(
                   title: 'Mes villes',
                   subtitle: 'Gérez vos villes suivies',
+                ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: _LocateButton(),
                 ),
                 const SizedBox(height: 14),
                 Expanded(
@@ -118,6 +123,79 @@ class CitiesScreen extends ConsumerWidget {
                 builder: (_) => const AddCitySheet(),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// « Mesure localisée » : ajoute la position de l'utilisateur comme ville
+/// par défaut, après son accord.
+class _LocateButton extends ConsumerStatefulWidget {
+  const _LocateButton();
+
+  @override
+  ConsumerState<_LocateButton> createState() => _LocateButtonState();
+}
+
+class _LocateButtonState extends ConsumerState<_LocateButton> {
+  bool _loading = false;
+
+  Future<void> _locate() async {
+    final accepted = await showAppSheet<bool>(
+      context,
+      builder: (_) => const ShareLocationSheet(),
+    );
+    if (accepted != true || !mounted) return;
+    setState(() => _loading = true);
+    try {
+      final city = await ref.read(locationRepositoryProvider).currentCity();
+      await ref.read(citiesControllerProvider.notifier).addLocatedCity(city);
+      if (mounted) {
+        showToast(context, '${city.name} est votre ville par défaut');
+      }
+    } on LocationException catch (error) {
+      if (mounted) showToast(context, error.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      radius: 16,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      onTap: _loading ? null : _locate,
+      child: Row(
+        children: [
+          if (_loading)
+            const SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(strokeWidth: 2.2),
+            )
+          else
+            const Icon(
+              Icons.my_location_rounded,
+              color: AppColors.primary1,
+              size: 20,
+            ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _loading ? 'Localisation en cours…' : 'Mesure localisée',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppColors.primary1,
+              ),
+            ),
+          ),
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: AppColors.inkFaint,
+            size: 20,
           ),
         ],
       ),

@@ -33,6 +33,21 @@ ForecastBundle stormyBundle() {
   );
 }
 
+/// Fixture réelle modifiée : valeurs horaires forcées de 18h à 20h.
+ForecastBundle patchedBundle(Map<String, Object> values) {
+  final json = loadForecastJson();
+  final hourly = json['hourly'] as Map<String, dynamic>;
+  final start = (hourly['time'] as List).indexOf('2026-09-27T18:00');
+  for (var i = start; i < start + 3; i++) {
+    values.forEach((key, value) => (hourly[key] as List)[i] = value);
+  }
+  return parseOpenMeteoForecast(
+    json,
+    city: 'Nabeul',
+    fetchedAt: DateTime.now(),
+  );
+}
+
 void main() {
   test('aucune alerte par temps calme (fixture réelle)', () {
     expect(deriveAlerts(loadBundle(), zone: 'Nabeul', format: format), isEmpty);
@@ -51,6 +66,50 @@ void main() {
     expect(storm.endsAt, DateTime(2026, 9, 27, 21));
     expect(storm.zone, 'Nabeul et environs');
     expect(storm.summary, contains('75 km/h'));
+  });
+
+  test('une pluie ordinaire donne une alerte « Pluie prévue »', () {
+    final alerts = deriveAlerts(
+      patchedBundle({
+        'weather_code': 61,
+        'precipitation': 1.2,
+        'precipitation_probability': 80,
+      }),
+      zone: 'Nabeul',
+      format: format,
+    );
+    expect(alerts.map((a) => a.title), ['Pluie prévue']);
+    expect(alerts.single.severity, AlertSeverity.information);
+    expect(alerts.single.startsAt, DateTime(2026, 9, 27, 18));
+    expect(alerts.single.summary, contains('80 %'));
+  });
+
+  test('pas de « Pluie prévue » en plus d’un orage', () {
+    final titles = deriveAlerts(
+      stormyBundle(),
+      zone: 'Nabeul',
+      format: format,
+    ).map((a) => a.title);
+    expect(titles, isNot(contains('Pluie prévue')));
+  });
+
+  test("chaleur, air sec et vent déclenchent un risque d'incendie", () {
+    ForecastBundle fire(double temp, int humidity, double wind) =>
+        patchedBundle({
+          'temperature_2m': temp,
+          'relative_humidity_2m': humidity,
+          'wind_speed_10m': wind,
+          'precipitation': 0.0,
+        });
+    List<String> titles(ForecastBundle b) => deriveAlerts(
+      b,
+      zone: 'Nabeul',
+      format: format,
+    ).map((a) => a.title).toList();
+
+    expect(titles(fire(32, 25, 25)), contains("Risque d'incendie"));
+    expect(titles(fire(38, 15, 35)), contains("Risque d'incendie très élevé"));
+    expect(titles(fire(32, 60, 25)), isNot(contains("Risque d'incendie")));
   });
 
   test(

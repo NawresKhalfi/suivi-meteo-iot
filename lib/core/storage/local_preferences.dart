@@ -34,4 +34,14 @@ class LocalPreferences {
 
   Future<void> saveAlertNotificationsEnabled(bool value) =>
       _preferences.setBool('alerts.notifications_enabled', value);
+
+  /// Identifiants des alertes déjà envoyées en notification.
+  List<String> get notifiedAlertIds =>
+      _preferences.getStringList('alerts.notified') ?? const [];
+
+  Future<void> saveNotifiedAlertIds(List<String> ids) =>
+      _preferences.setStringList('alerts.notified', ids);
+
+  /// Relit le disque : la tâche d'arrière-plan tourne dans un autre isolate.
+  Future<void> reload() => _preferences.reload();
 }

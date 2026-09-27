@@ -2,16 +2,30 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/http_client_provider.dart';
 import '../../cities/application/cities_controller.dart';
 import '../../settings/application/settings_controller.dart';
 import '../../weather/application/weather_controller.dart';
 import '../data/alerts_repository.dart';
+import '../data/hazard_repository.dart';
 import '../domain/alert_rules.dart';
+import '../domain/hazard_event.dart';
 import '../domain/weather_alert.dart';
 
 final alertsHistoryStoreProvider = Provider<AlertsHistoryStore>(
   (ref) => MemoryAlertsHistoryStore(),
 );
+
+final hazardRepositoryProvider = Provider<HazardRepository>(
+  (ref) => GdacsHazardRepository(ref.watch(httpClientProvider)),
+);
+
+/// Catastrophes en cours (GDACS), rechargées toutes les 30 minutes.
+final hazardEventsProvider = FutureProvider<List<HazardEvent>>((ref) {
+  final timer = Timer(const Duration(minutes: 30), ref.invalidateSelf);
+  ref.onDispose(timer.cancel);
+  return ref.watch(hazardRepositoryProvider).fetchCurrentEvents();
+});
 
 final alertNotificationServiceProvider = Provider<AlertNotificationService>(
   (ref) => UnconfiguredAlertNotificationService(),
@@ -75,7 +89,11 @@ class AlertsController extends Notifier<AlertsState> {
     final store = ref.read(alertsHistoryStoreProvider);
     final now = bundle.current.observedAt;
 
-    final derived = deriveAlerts(bundle, zone: city.name, format: format);
+    final hazards = ref.watch(hazardEventsProvider).valueOrNull ?? const [];
+    final derived = [
+      ...deriveAlerts(bundle, zone: city.name, format: format),
+      ...hazardAlerts(hazards, city: city, now: now),
+    ];
     final byId = {
       for (final alert in store.read(city.id)) alert.id: alert,
       for (final alert in derived) alert.id: alert,

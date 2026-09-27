@@ -45,6 +45,20 @@ void main() {
     expect(store.value.cities, [defaultCity, paris]);
   });
 
+  test(
+    'la ville localisée devient la ville par défaut et sélectionnée',
+    () async {
+      await controller().addLocatedCity(paris);
+      expect(state().cities, [defaultCity, paris]);
+      expect(state().isDefault(paris), isTrue);
+      expect(state().selectedCity, paris);
+      expect(store.value.defaultCityId, paris.id);
+
+      await controller().addLocatedCity(paris);
+      expect(state().cities, [defaultCity, paris]);
+    },
+  );
+
   test('la ville par défaut ne peut pas être supprimée', () async {
     await controller().addCity(paris);
     expect(

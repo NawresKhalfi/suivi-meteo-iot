@@ -10,9 +10,13 @@ import 'package:meteo/core/network/http_client_provider.dart';
 import 'package:meteo/features/air_quality/application/air_quality_controller.dart';
 import 'package:meteo/features/air_quality/data/air_quality_repository.dart';
 import 'package:meteo/features/air_quality/domain/air_quality_snapshot.dart';
+import 'package:meteo/features/alerts/application/alerts_controller.dart';
+import 'package:meteo/features/alerts/data/hazard_repository.dart';
+import 'package:meteo/features/alerts/domain/hazard_event.dart';
 import 'package:meteo/features/cities/application/cities_controller.dart';
 import 'package:meteo/features/cities/data/cities_store.dart';
 import 'package:meteo/features/cities/data/city_search_repository.dart';
+import 'package:meteo/features/cities/data/location_repository.dart';
 import 'package:meteo/features/cities/domain/city.dart';
 import 'package:meteo/features/map/application/map_controller.dart';
 import 'package:meteo/features/map/data/map_repositories.dart';
@@ -86,6 +90,17 @@ class FakeCitySearchRepository implements CitySearchRepository {
   ].where((c) => c.name.toLowerCase().contains(query.toLowerCase())).toList();
 }
 
+class FakeLocationRepository implements LocationRepository {
+  @override
+  Future<City> currentCity() async => const City(
+    name: 'Hammam Sousse',
+    country: 'Tunisie',
+    region: 'Sousse',
+    latitude: 35.8609,
+    longitude: 10.6031,
+  );
+}
+
 class FakeRadarRepository implements RadarRepository {
   @override
   Future<RadarFrames> fetchFrames() async => RadarFrames(
@@ -120,6 +135,15 @@ class FakeGridRepository implements WeatherGridRepository {
   ];
 }
 
+class FakeHazardRepository implements HazardRepository {
+  FakeHazardRepository([this.events = const []]);
+
+  final List<HazardEvent> events;
+
+  @override
+  Future<List<HazardEvent>> fetchCurrentEvents() async => events;
+}
+
 /// Tuile transparente 1×1 : aucune requête réseau dans les tests.
 class BlankTileProvider extends TileProvider {
   static final _png = base64Decode(
@@ -143,7 +167,9 @@ List<Override> testOverrides({
   ),
   airQualityRepositoryProvider.overrideWithValue(FakeAirQualityRepository()),
   citySearchRepositoryProvider.overrideWithValue(FakeCitySearchRepository()),
+  locationRepositoryProvider.overrideWithValue(FakeLocationRepository()),
   radarRepositoryProvider.overrideWithValue(FakeRadarRepository()),
+  hazardRepositoryProvider.overrideWithValue(FakeHazardRepository()),
   weatherGridRepositoryProvider.overrideWithValue(FakeGridRepository()),
   mapTileProviderProvider.overrideWithValue(BlankTileProvider()),
   if (citiesStore != null) citiesStoreProvider.overrideWithValue(citiesStore),

@@ -6,6 +6,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_sheet.dart';
 import '../../../settings/application/settings_controller.dart';
+import '../../domain/hazard_event.dart';
 import '../../domain/weather_alert.dart';
 
 (Color, Color) severityColors(AlertSeverity severity) => switch (severity) {
@@ -142,7 +143,10 @@ class AlertDetailSheet extends ConsumerWidget {
           ),
         ),
         _MetaRow(
-          items: [('Zone affectée', alert.zone), ('Source', 'Open-Meteo')],
+          items: [
+            ('Zone affectée', alert.zone),
+            ('Source', alert.source == hazardSource ? 'GDACS' : 'Open-Meteo'),
+          ],
         ),
         _MetaRow(
           items: [('Début', when(alert.startsAt)), ('Fin', when(alert.endsAt))],

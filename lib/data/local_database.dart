@@ -39,11 +39,7 @@ class AlertItem {
   final String message;
   final String type;
 
-  AlertItem({
-    required this.label,
-    required this.message,
-    required this.type,
-  });
+  AlertItem({required this.label, required this.message, required this.type});
 }
 
 class LocalDatabase {
@@ -118,8 +114,11 @@ class LocalDatabase {
 
     final db = await database;
 
-    final existingThresholds =
-        await db.query('thresholds', columns: ['key'], limit: 1);
+    final existingThresholds = await db.query(
+      'thresholds',
+      columns: ['key'],
+      limit: 1,
+    );
     if (existingThresholds.isEmpty) {
       await db.insert('thresholds', {'key': 'temperature_max', 'value': 25});
       await db.insert('thresholds', {'key': 'humidity_max', 'value': 80});
@@ -127,41 +126,28 @@ class LocalDatabase {
       await db.insert('thresholds', {'key': 'pressure_min', 'value': 980});
     }
 
-    final existingMeasurements =
-        await db.query('measurements', columns: ['id'], limit: 1);
+    final existingMeasurements = await db.query(
+      'measurements',
+      columns: ['id'],
+      limit: 1,
+    );
     if (existingMeasurements.isEmpty) {
       final now = DateTime.now();
       await db.insert(
         'measurements',
-        Measurement(
-          type: 'temperature',
-          value: 28.5,
-          timestamp: now,
-        ).toMap(),
+        Measurement(type: 'temperature', value: 28.5, timestamp: now).toMap(),
       );
       await db.insert(
         'measurements',
-        Measurement(
-          type: 'humidity',
-          value: 70,
-          timestamp: now,
-        ).toMap(),
+        Measurement(type: 'humidity', value: 70, timestamp: now).toMap(),
       );
       await db.insert(
         'measurements',
-        Measurement(
-          type: 'wind',
-          value: 10,
-          timestamp: now,
-        ).toMap(),
+        Measurement(type: 'wind', value: 10, timestamp: now).toMap(),
       );
       await db.insert(
         'measurements',
-        Measurement(
-          type: 'pressure',
-          value: 990,
-          timestamp: now,
-        ).toMap(),
+        Measurement(type: 'pressure', value: 990, timestamp: now).toMap(),
       );
     }
   }
@@ -191,11 +177,10 @@ class LocalDatabase {
     }
 
     final db = await database;
-    await db.insert(
-      'thresholds',
-      {'key': key, 'value': value},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('thresholds', {
+      'key': key,
+      'value': value,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> insertMeasurement(Measurement measurement) async {
@@ -281,7 +266,8 @@ class LocalDatabase {
     }
 
     if (pressure != null &&
-        pressure.value < (thresholds['pressure_min'] ?? double.negativeInfinity)) {
+        pressure.value <
+            (thresholds['pressure_min'] ?? double.negativeInfinity)) {
       alerts.add(
         AlertItem(
           label: 'Pression',

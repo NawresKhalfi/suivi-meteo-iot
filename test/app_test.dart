@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meteo/app.dart';
+import 'package:meteo/features/settings/application/home_screen_widget_controller.dart';
+import 'package:meteo/features/settings/data/home_screen_widget.dart';
 
 import 'helpers/fakes.dart';
 
@@ -15,13 +17,17 @@ Future<void> settle(WidgetTester tester) async {
 Future<void> pumpApp(
   WidgetTester tester, {
   FakeWeatherRepository? weather,
+  List<Override> overrides = const [],
 }) async {
   tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: testOverrides(weather: weather),
+      overrides: [
+        ...testOverrides(weather: weather),
+        ...overrides,
+      ],
       child: const MeteoApp(),
     ),
   );
@@ -129,6 +135,24 @@ void main() {
     expect(find.text('Ressenti'), findsOneWidget);
   });
 
+  testWidgets('mesure localisée : ajoute la position comme ville par défaut', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Villes'));
+    await settle(tester);
+    await tester.tap(find.text('Mesure localisée'));
+    await settle(tester);
+    expect(find.text('Partager votre position ?'), findsOneWidget);
+    await tester.tap(find.text('Partager ma position'));
+    await settle(tester);
+    expect(
+      find.text('Hammam Sousse est votre ville par défaut'),
+      findsOneWidget,
+    );
+    expect(find.text('Hammam Sousse'), findsOneWidget);
+  });
+
   testWidgets('la ville par défaut ne peut pas être supprimée', (tester) async {
     await pumpApp(tester);
     await tester.tap(find.text('Villes'));
@@ -151,4 +175,76 @@ void main() {
     await settle(tester);
     expect(find.textContaining('Aucune alerte en cours'), findsOneWidget);
   });
+
+  testWidgets("le widget d'écran d'accueil s'ajoute après acceptation", (
+    tester,
+  ) async {
+    final widget = FakeHomeScreenWidgetService();
+    await pumpApp(
+      tester,
+      overrides: [homeScreenWidgetServiceProvider.overrideWithValue(widget)],
+    );
+    // L'app ouverte sur la ville par défaut alimente déjà le widget.
+    expect(widget.updates.last.city, 'Nabeul');
+    expect(widget.updates.last.temperature, '26°');
+
+    await tester.tap(find.text('Réglages'));
+    await settle(tester);
+    final hint = find.text("Toucher pour l'ajouter à l'écran d'accueil");
+    await tester.scrollUntilVisible(hint, 200);
+    await tester.ensureVisible(hint);
+    await settle(tester);
+    await tester.tap(hint);
+    await settle(tester);
+    expect(
+      find.text("Ajouter le widget à l'écran d'accueil ?"),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Pas maintenant'));
+    await settle(tester);
+    expect(widget.pinRequests, 0);
+
+    await tester.tap(hint);
+    await settle(tester);
+    await tester.tap(find.text('Ajouter'));
+    await settle(tester);
+    expect(widget.pinRequests, 1);
+    expect(find.text("Ajouter le widget à l'écran d'accueil ?"), findsNothing);
+  });
+
+  testWidgets("sans épinglage possible, le dialogue explique quoi faire", (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Réglages'));
+    await settle(tester);
+    final hint = find.text("Toucher pour l'ajouter à l'écran d'accueil");
+    await tester.scrollUntilVisible(hint, 200);
+    await tester.ensureVisible(hint);
+    await settle(tester);
+    await tester.tap(hint);
+    await settle(tester);
+    expect(find.text('Widget météo'), findsOneWidget);
+    await tester.tap(find.text("J'ai compris"));
+    await settle(tester);
+    expect(find.text('Widget météo'), findsNothing);
+  });
+}
+
+class FakeHomeScreenWidgetService implements HomeScreenWidgetService {
+  final updates = <HomeScreenWidgetData>[];
+  var pinRequests = 0;
+
+  @override
+  Future<bool> canPin() async => true;
+
+  @override
+  Future<void> requestPin() async => pinRequests++;
+
+  @override
+  Future<bool> isInstalled() async => pinRequests > 0;
+
+  @override
+  Future<void> update(HomeScreenWidgetData data) async => updates.add(data);
 }

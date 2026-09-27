@@ -8,10 +8,13 @@ import 'app.dart';
 import 'core/storage/local_preferences.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
+import 'features/alerts/application/alert_watcher.dart';
 import 'features/alerts/application/alerts_controller.dart';
 import 'features/alerts/data/alerts_repository.dart';
 import 'features/cities/application/cities_controller.dart';
 import 'features/cities/data/cities_store.dart';
+import 'features/settings/application/home_screen_widget_controller.dart';
+import 'features/settings/data/home_screen_widget.dart';
 import 'features/settings/application/settings_controller.dart';
 import 'features/settings/data/settings_store.dart';
 import 'features/weather/application/weather_controller.dart';
@@ -28,15 +31,18 @@ Future<void> main() async {
 }
 
 class _InitData {
-  const _InitData(this.preferences, this.firebaseReady);
+  const _InitData(this.preferences);
 
   final LocalPreferences preferences;
-  final bool firebaseReady;
 }
 
 final _initProvider = FutureProvider<_InitData>((ref) async {
   final preferences = LocalPreferences(await SharedPreferences.getInstance());
-  var firebaseReady = false;
+  try {
+    await LocalAlertNotificationService.start(preferences);
+  } on Object catch (error) {
+    debugPrint('Surveillance des alertes indisponible : $error');
+  }
   try {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -46,13 +52,12 @@ final _initProvider = FutureProvider<_InitData>((ref) async {
           badge: true,
           sound: true,
         );
-    firebaseReady = true;
   } on Object catch (error) {
-    // Firebase non configuré (fichiers google-services absents) : l'app
-    // fonctionne sans notifications push.
+    // Firebase non configuré (fichiers google-services absents). Les alertes
+    // sont notifiées localement par la surveillance en arrière-plan.
     debugPrint('Firebase indisponible : $error');
   }
-  return _InitData(preferences, firebaseReady);
+  return _InitData(preferences);
 });
 
 class InitApp extends ConsumerWidget {
@@ -84,9 +89,10 @@ class InitApp extends ConsumerWidget {
                   SharedPreferencesAlertsHistoryStore(prefs),
                 ),
                 alertNotificationServiceProvider.overrideWithValue(
-                  data.firebaseReady
-                      ? FirebaseAlertNotificationService(prefs)
-                      : SharedPreferencesAlertNotificationService(prefs),
+                  LocalAlertNotificationService(prefs),
+                ),
+                homeScreenWidgetServiceProvider.overrideWithValue(
+                  platformHomeScreenWidget(),
                 ),
               ],
               child: const MeteoApp(),

@@ -28,13 +28,13 @@ class _AlertsPageState extends State<AlertsPage> {
     await db.init();
     final thresholds = await db.getThresholds();
 
-    _temperatureController.text =
-        (thresholds['temperature_max'] ?? 25).toString();
-    _humidityController.text =
-        (thresholds['humidity_max'] ?? 80).toStringAsFixed(0);
+    _temperatureController.text = (thresholds['temperature_max'] ?? 25)
+        .toString();
+    _humidityController.text = (thresholds['humidity_max'] ?? 80)
+        .toStringAsFixed(0);
     _windController.text = (thresholds['wind_max'] ?? 40).toString();
-    _pressureController.text =
-        (thresholds['pressure_min'] ?? 980).toStringAsFixed(0);
+    _pressureController.text = (thresholds['pressure_min'] ?? 980)
+        .toStringAsFixed(0);
 
     final alerts = await db.getActiveAlerts();
 
@@ -162,20 +162,14 @@ class _AlertCenterHeader extends StatelessWidget {
           children: [
             const Text(
               'Centre d\'alertes',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 2),
             Text(
               alertCount == 0
                   ? 'Aucune alerte active'
                   : '$alertCount alerte${alertCount > 1 ? 's' : ''} active${alertCount > 1 ? 's' : ''}',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.black54,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
             ),
           ],
         ),
@@ -190,16 +184,10 @@ class _AlertCenterHeader extends StatelessWidget {
             ),
           ),
           onPressed: () {},
-          icon: const Icon(
-            Icons.notifications_active_outlined,
-            size: 18,
-          ),
+          icon: const Icon(Icons.notifications_active_outlined, size: 18),
           label: const Text(
             'Notifications ON',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
           ),
         ),
       ],
@@ -232,10 +220,7 @@ class _AlertThresholdsCard extends StatelessWidget {
           children: [
             const Text(
               'Seuils d\'alerte',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
             _thresholdField(
@@ -293,23 +278,19 @@ class _AlertThresholdsCard extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.black54,
-          ),
+          style: const TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 4),
         TextFormField(
           controller: controller,
-          keyboardType:
-              const TextInputType.numberWithOptions(decimal: true),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(
             isDense: true,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
             ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
       ],
@@ -329,19 +310,13 @@ class _ActiveAlertsSection extends StatelessWidget {
       children: [
         const Text(
           'Alertes actives',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
         if (alerts.isEmpty)
           const Text(
             'Aucune alerte active.',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.black54,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.black54),
           )
         else
           Column(
@@ -370,9 +345,7 @@ class _ActiveAlertCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFFF9E6),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFFFF2C2),
-        ),
+        border: Border.all(color: const Color(0xFFFFF2C2)),
       ),
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -408,10 +381,7 @@ class _ActiveAlertCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   const Text(
                     'Alerte système',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.black54,
-                    ),
+                    style: TextStyle(fontSize: 11, color: Colors.black54),
                   ),
                 ],
               ),
@@ -419,8 +389,10 @@ class _ActiveAlertCard extends StatelessWidget {
               TextButton(
                 onPressed: () {},
                 style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   backgroundColor: Colors.white,
                   foregroundColor: const Color(0xFF1E88E5),
                   shape: RoundedRectangleBorder(
@@ -429,31 +401,20 @@ class _ActiveAlertCard extends StatelessWidget {
                 ),
                 child: const Text(
                   'Acquitter',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                 ),
               ),
               const SizedBox(width: 4),
-              const Icon(
-                Icons.close,
-                size: 16,
-                color: Colors.black38,
-              ),
+              const Icon(Icons.close, size: 16, color: Colors.black38),
             ],
           ),
           const SizedBox(height: 10),
           Text(
             alert.message,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.black87,
-            ),
+            style: const TextStyle(fontSize: 12, color: Colors.black87),
           ),
         ],
       ),
     );
   }
 }
-

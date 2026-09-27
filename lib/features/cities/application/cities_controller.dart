@@ -3,12 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/http_client_provider.dart';
 import '../data/cities_store.dart';
 import '../data/city_search_repository.dart';
+import '../data/location_repository.dart';
 import '../domain/city.dart';
 
 final citiesStoreProvider = Provider<CitiesStore>((ref) => MemoryCitiesStore());
 
 final citySearchRepositoryProvider = Provider<CitySearchRepository>(
   (ref) => OpenMeteoCitySearchRepository(ref.watch(httpClientProvider)),
+);
+
+final locationRepositoryProvider = Provider<LocationRepository>(
+  (ref) => DeviceLocationRepository(ref.watch(httpClientProvider)),
 );
 
 final citiesControllerProvider =
@@ -81,6 +86,19 @@ class CitiesController extends Notifier<CitiesState> {
     state = state.copyWith(cities: [...state.cities, city]);
     await _persist();
     return true;
+  }
+
+  /// Ajoute la ville localisée (si besoin), la définit par défaut
+  /// et l'affiche.
+  Future<void> addLocatedCity(City city) async {
+    state = state.copyWith(
+      cities: state.cities.contains(city)
+          ? state.cities
+          : [...state.cities, city],
+      defaultCityId: city.id,
+      selectedCityId: city.id,
+    );
+    await _persist();
   }
 
   Future<RemoveCityResult> removeCity(City city) async {
