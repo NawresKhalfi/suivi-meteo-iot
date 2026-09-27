@@ -1,38 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meteo/app.dart';
 import 'package:meteo/features/settings/application/home_screen_widget_controller.dart';
-import 'package:meteo/features/settings/data/home_screen_widget.dart';
 
 import 'helpers/fakes.dart';
-
-Future<void> settle(WidgetTester tester) async {
-  // Animations infinies (repère pulsé) : on avance le temps sans pumpAndSettle.
-  for (var i = 0; i < 12; i++) {
-    await tester.pump(const Duration(milliseconds: 100));
-  }
-}
-
-Future<void> pumpApp(
-  WidgetTester tester, {
-  FakeWeatherRepository? weather,
-  List<Override> overrides = const [],
-}) async {
-  tester.view.physicalSize = const Size(1170, 2532);
-  tester.view.devicePixelRatio = 3;
-  addTearDown(tester.view.reset);
-  await tester.pumpWidget(
-    ProviderScope(
-      overrides: [
-        ...testOverrides(weather: weather),
-        ...overrides,
-      ],
-      child: const MeteoApp(),
-    ),
-  );
-  await settle(tester);
-}
+import 'helpers/pump_app.dart';
 
 void main() {
   testWidgets('accueil : météo réelle de la ville par défaut', (tester) async {
@@ -230,21 +201,4 @@ void main() {
     await settle(tester);
     expect(find.text('Widget météo'), findsNothing);
   });
-}
-
-class FakeHomeScreenWidgetService implements HomeScreenWidgetService {
-  final updates = <HomeScreenWidgetData>[];
-  var pinRequests = 0;
-
-  @override
-  Future<bool> canPin() async => true;
-
-  @override
-  Future<void> requestPin() async => pinRequests++;
-
-  @override
-  Future<bool> isInstalled() async => pinRequests > 0;
-
-  @override
-  Future<void> update(HomeScreenWidgetData data) async => updates.add(data);
 }

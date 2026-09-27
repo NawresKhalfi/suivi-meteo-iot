@@ -32,21 +32,49 @@ Map<String, dynamic> loadForecastJson() =>
     jsonDecode(File('test/fixtures/forecast_nabeul.json').readAsStringSync())
         as Map<String, dynamic>;
 
-ForecastBundle loadBundle({String city = 'Nabeul'}) => parseOpenMeteoForecast(
-  loadForecastJson(),
+ForecastBundle loadBundle({
+  String city = 'Nabeul',
+  bool isOffline = false,
+  Map<String, dynamic>? json,
+}) => parseOpenMeteoForecast(
+  json ?? loadForecastJson(),
   city: city,
   fetchedAt: DateTime.now(),
+  isOffline: isOffline,
 );
 
+/// Fixture réelle dont les valeurs horaires sont forcées pendant [hours]
+/// heures à partir de [from] (18h par défaut ; l'observation est à 16h15).
+Map<String, dynamic> patchedForecastJson(
+  Map<String, Object> values, {
+  String from = '2026-09-27T18:00',
+  int hours = 3,
+}) {
+  final json = loadForecastJson();
+  final hourly = json['hourly'] as Map<String, dynamic>;
+  final start = (hourly['time'] as List).indexOf(from);
+  for (var i = start; i < start + hours; i++) {
+    values.forEach((key, value) => (hourly[key] as List)[i] = value);
+  }
+  return json;
+}
+
 class FakeWeatherRepository implements WeatherRepository {
+  FakeWeatherRepository({this.json});
+
+  /// Réponse Open-Meteo à renvoyer (fixture Nabeul par défaut).
+  final Map<String, dynamic>? json;
   int forecastCalls = 0;
   bool fail = false;
+
+  /// Simule la dernière donnée connue renvoyée hors connexion (US05).
+  bool offline = false;
 
   @override
   Future<ForecastBundle> fetchForecast(City city) async {
     forecastCalls++;
     if (fail) throw Exception('offline');
-    return loadBundle(city: city.name);
+    return loadBundle(city: city.name, isOffline: offline, json: json);
   }
 
   @override
