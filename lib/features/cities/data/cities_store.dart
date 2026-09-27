@@ -3,11 +3,16 @@ import 'dart:convert';
 import '../../../core/storage/local_preferences.dart';
 import '../domain/city.dart';
 
+class StoredCities {
+  const StoredCities({required this.cities, this.defaultCityId});
+
+  final List<City> cities;
+  final String? defaultCityId;
+}
+
 abstract interface class CitiesStore {
-  List<City> read();
-  String? readSelected();
-  Future<void> save(List<City> cities);
-  Future<void> saveSelected(String cityId);
+  StoredCities read();
+  Future<void> save(StoredCities value);
 }
 
 class SharedPreferencesCitiesStore implements CitiesStore {
@@ -16,61 +21,39 @@ class SharedPreferencesCitiesStore implements CitiesStore {
   final LocalPreferences _preferences;
 
   @override
-  List<City> read() {
+  StoredCities read() {
     final value = _preferences.savedCities;
-    if (value == null) return const [];
+    if (value == null) return const StoredCities(cities: []);
     try {
-      return (jsonDecode(value) as List<dynamic>).map((item) {
-        final json = item as Map<String, dynamic>;
-        return City(
-          name: json['name'] as String,
-          country: json['country'] as String,
-          isFavorite: json['isFavorite'] as bool? ?? false,
-        );
-      }).toList();
+      final json = jsonDecode(value) as Map<String, dynamic>;
+      return StoredCities(
+        cities: (json['cities'] as List<dynamic>)
+            .map((item) => City.fromJson(item as Map<String, dynamic>))
+            .toList(),
+        defaultCityId: json['default'] as String?,
+      );
     } on Object {
-      return const [];
+      return const StoredCities(cities: []);
     }
   }
 
   @override
-  String? readSelected() => _preferences.selectedCity;
-
-  @override
-  Future<void> save(List<City> cities) {
-    return _preferences.saveCities(
-      jsonEncode(
-        cities
-            .map(
-              (city) => {
-                'name': city.name,
-                'country': city.country,
-                'isFavorite': city.isFavorite,
-              },
-            )
-            .toList(),
-      ),
-    );
-  }
-
-  @override
-  Future<void> saveSelected(String cityId) =>
-      _preferences.saveSelectedCity(cityId);
+  Future<void> save(StoredCities value) => _preferences.saveCities(
+    jsonEncode({
+      'cities': value.cities.map((city) => city.toJson()).toList(),
+      'default': value.defaultCityId,
+    }),
+  );
 }
 
 class MemoryCitiesStore implements CitiesStore {
-  List<City> cities = const [];
-  String? selected;
+  MemoryCitiesStore([this.value = const StoredCities(cities: [])]);
+
+  StoredCities value;
 
   @override
-  List<City> read() => cities;
+  StoredCities read() => value;
 
   @override
-  String? readSelected() => selected;
-
-  @override
-  Future<void> save(List<City> value) async => cities = List.of(value);
-
-  @override
-  Future<void> saveSelected(String cityId) async => selected = cityId;
+  Future<void> save(StoredCities value) async => this.value = value;
 }

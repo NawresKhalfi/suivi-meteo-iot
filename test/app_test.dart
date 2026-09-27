@@ -1,14 +1,154 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meteo/app.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'helpers/fakes.dart';
+
+Future<void> settle(WidgetTester tester) async {
+  // Animations infinies (repère pulsé) : on avance le temps sans pumpAndSettle.
+  for (var i = 0; i < 12; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
+Future<void> pumpApp(
+  WidgetTester tester, {
+  FakeWeatherRepository? weather,
+}) async {
+  tester.view.physicalSize = const Size(1170, 2532);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: testOverrides(weather: weather),
+      child: const MeteoApp(),
+    ),
+  );
+  await settle(tester);
+}
 
 void main() {
-  testWidgets('affiche le tableau de bord météo', (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: MeteoApp()));
-    await tester.pumpAndSettle();
+  testWidgets('accueil : météo réelle de la ville par défaut', (tester) async {
+    await pumpApp(tester);
+    expect(find.text('Nabeul'), findsOneWidget);
+    expect(find.text('26'), findsOneWidget); // 25,5 °C arrondi
+    expect(find.text('Ciel couvert'), findsOneWidget);
+    expect(find.text('Ressenti'), findsOneWidget);
+    expect(find.text("Aujourd'hui"), findsWidgets);
+    expect(find.text('Maint.'), findsOneWidget);
+    expect(find.text('42 · Bon'), findsOneWidget);
+    expect(find.text('Coucher du soleil'), findsOneWidget);
+    expect(find.text('18:06'), findsOneWidget);
+  });
 
-    expect(find.text('Paris'), findsOneWidget);
-    expect(find.text('21.8 °C'), findsOneWidget);
-    expect(find.text('Humidité'), findsOneWidget);
+  testWidgets('erreur réseau sans cache : message et bouton Réessayer', (
+    tester,
+  ) async {
+    await pumpApp(tester, weather: FakeWeatherRepository()..fail = true);
+    expect(find.textContaining('Météo indisponible'), findsOneWidget);
+    expect(find.text('Réessayer'), findsOneWidget);
+  });
+
+  testWidgets('navigue entre les 5 onglets', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Prévisions'));
+    await settle(tester);
+    expect(find.text('24 heures'), findsOneWidget);
+    await tester.tap(find.text('10 jours'));
+    await settle(tester);
+    expect(find.text('27 sept'), findsOneWidget);
+    await tester.tap(find.text('Pluie & vent'));
+    await settle(tester);
+    expect(find.text('Probabilité de pluie — 10 jours'), findsOneWidget);
+
+    await tester.tap(find.text('Carte'));
+    await settle(tester);
+    expect(find.text('Carte radar'), findsOneWidget);
+    await tester.tap(find.text('Précipitations'));
+    await settle(tester);
+    expect(find.text('Maintenant'), findsOneWidget);
+
+    await tester.tap(find.text('Villes'));
+    await settle(tester);
+    expect(find.text('Mes villes'), findsOneWidget);
+
+    await tester.tap(find.text('Réglages'));
+    await settle(tester);
+    expect(find.text('Unités de mesure'), findsOneWidget);
+  });
+
+  testWidgets("« 10 jours » depuis l'accueil ouvre l'onglet correspondant", (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await tester.ensureVisible(find.text('10 jours'));
+    await settle(tester);
+    await tester.tap(find.text('10 jours'));
+    await settle(tester);
+    expect(find.text('Prévisions'), findsWidgets);
+    expect(find.text('27 sept'), findsOneWidget);
+  });
+
+  testWidgets('changer d’unité de température met à jour l’accueil', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Réglages'));
+    await settle(tester);
+    await tester.tap(find.text('Température'));
+    await settle(tester);
+    await tester.tap(find.text('Fahrenheit (°F)'));
+    await settle(tester);
+    expect(find.text('Fahrenheit (°F)'), findsOneWidget);
+
+    await tester.tap(find.text('Accueil'));
+    await settle(tester);
+    expect(find.text('78'), findsOneWidget); // 25,5 °C = 77,9 °F
+  });
+
+  testWidgets('ajoute une ville via la recherche puis la sélectionne', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Villes'));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Ajouter une ville'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField), 'sous');
+    await tester.pump(const Duration(milliseconds: 400));
+    await settle(tester);
+    await tester.tap(find.text('Sousse').last);
+    await settle(tester);
+    expect(find.text('Sousse a été ajoutée à vos villes'), findsOneWidget);
+
+    await tester.tap(find.text('Sousse'));
+    await settle(tester);
+    expect(find.text('Sousse'), findsOneWidget); // accueil
+    expect(find.text('Ressenti'), findsOneWidget);
+  });
+
+  testWidgets('la ville par défaut ne peut pas être supprimée', (tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Villes'));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Supprimer'));
+    await settle(tester);
+    expect(
+      find.text(
+        'Choisissez une autre ville par défaut avant de supprimer celle-ci',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets("la cloche ouvre la page d'alertes quand tout est calme", (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await tester.tap(find.bySemanticsLabel('Alertes météo'));
+    await settle(tester);
+    expect(find.textContaining('Aucune alerte en cours'), findsOneWidget);
   });
 }

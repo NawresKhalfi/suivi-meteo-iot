@@ -1,28 +1,71 @@
-import '../domain/weather_alert.dart';
-import '../../../core/storage/local_preferences.dart';
+import 'dart:convert';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-abstract interface class AlertsRepository {
-  Future<List<WeatherAlert>> fetchAlerts();
+import '../../../core/storage/local_preferences.dart';
+import '../domain/weather_alert.dart';
+
+/// Historique des alertes par ville (E02 – US09).
+abstract interface class AlertsHistoryStore {
+  List<WeatherAlert> read(String cityId);
+  Future<void> save(String cityId, List<WeatherAlert> alerts);
 }
 
+class SharedPreferencesAlertsHistoryStore implements AlertsHistoryStore {
+  SharedPreferencesAlertsHistoryStore(this._preferences);
+
+  final LocalPreferences _preferences;
+
+  @override
+  List<WeatherAlert> read(String cityId) {
+    final value = _preferences.alertsHistory(cityId);
+    if (value == null) return const [];
+    try {
+      return (jsonDecode(value) as List<dynamic>)
+          .map((item) => WeatherAlert.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } on Object {
+      return const [];
+    }
+  }
+
+  @override
+  Future<void> save(String cityId, List<WeatherAlert> alerts) =>
+      _preferences.saveAlertsHistory(
+        cityId,
+        jsonEncode(alerts.map((a) => a.toJson()).toList()),
+      );
+}
+
+class MemoryAlertsHistoryStore implements AlertsHistoryStore {
+  final Map<String, List<WeatherAlert>> values = {};
+
+  @override
+  List<WeatherAlert> read(String cityId) => values[cityId] ?? const [];
+
+  @override
+  Future<void> save(String cityId, List<WeatherAlert> alerts) async =>
+      values[cityId] = List.of(alerts);
+}
+
+/// Abonnement aux notifications push d'alertes (E02 – US06).
 abstract interface class AlertNotificationService {
   bool get isEnabled;
-
   Future<void> configure();
-
   Future<void> disable();
 }
 
 class UnconfiguredAlertNotificationService implements AlertNotificationService {
-  @override
-  bool get isEnabled => false;
+  bool _enabled = false;
 
   @override
-  Future<void> configure() async {}
+  bool get isEnabled => _enabled;
 
   @override
-  Future<void> disable() async {}
+  Future<void> configure() async => _enabled = true;
+
+  @override
+  Future<void> disable() async => _enabled = false;
 }
 
 class FirebaseAlertNotificationService implements AlertNotificationService {
@@ -40,7 +83,6 @@ class FirebaseAlertNotificationService implements AlertNotificationService {
       alert: true,
       badge: true,
       sound: true,
-      provisional: false,
     );
     if (settings.authorizationStatus == AuthorizationStatus.denied) {
       throw StateError('Les notifications ont été refusées.');
@@ -66,57 +108,8 @@ class SharedPreferencesAlertNotificationService
   bool get isEnabled => _preferences.alertNotificationsEnabled;
 
   @override
-  Future<void> configure() {
-    return _preferences.saveAlertNotificationsEnabled(true);
-  }
+  Future<void> configure() => _preferences.saveAlertNotificationsEnabled(true);
 
   @override
-  Future<void> disable() {
-    return _preferences.saveAlertNotificationsEnabled(false);
-  }
-}
-
-class DemoAlertsRepository implements AlertsRepository {
-  @override
-  Future<List<WeatherAlert>> fetchAlerts() async {
-    final now = DateTime.now();
-    return [
-      WeatherAlert(
-        id: 'storm-1',
-        title: 'Orages localisés',
-        summary: 'Risque d\'orages et de fortes rafales en soirée.',
-        zone: 'Paris et petite couronne',
-        source: 'Météo France',
-        severity: AlertSeverity.danger,
-        startsAt: now.subtract(const Duration(hours: 1)),
-        endsAt: now.add(const Duration(hours: 5)),
-        originalText:
-            'Des orages localement forts peuvent provoquer de fortes rafales et des ruissellements rapides.',
-      ),
-      WeatherAlert(
-        id: 'heat-1',
-        title: 'Vigilance chaleur',
-        summary: 'Températures élevées attendues cet après-midi.',
-        zone: 'Île-de-France',
-        source: 'Météo France',
-        severity: AlertSeverity.vigilance,
-        startsAt: now.subtract(const Duration(hours: 3)),
-        endsAt: now.add(const Duration(hours: 10)),
-        originalText:
-            'Hydratez-vous régulièrement et limitez les efforts physiques aux heures les plus chaudes.',
-      ),
-      WeatherAlert(
-        id: 'wind-old',
-        title: 'Vent fort hier',
-        summary: 'Épisode de vent désormais terminé.',
-        zone: 'Paris',
-        source: 'Météo France',
-        severity: AlertSeverity.information,
-        startsAt: now.subtract(const Duration(hours: 30)),
-        endsAt: now.subtract(const Duration(hours: 26)),
-        originalText:
-            'Épisode terminé. Consultez les prévisions locales pour les prochaines heures.',
-      ),
-    ];
-  }
+  Future<void> disable() => _preferences.saveAlertNotificationsEnabled(false);
 }

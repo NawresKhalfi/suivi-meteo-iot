@@ -1,46 +1,37 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Wrapper typé autour de SharedPreferences. Chaque feature passe par ses
+/// propres « stores » (couche `data/`) qui s'appuient sur ces accesseurs.
 class LocalPreferences {
   LocalPreferences(this._preferences);
 
   final SharedPreferences _preferences;
 
-  DateTime? get lastWeatherUpdate {
-    final value = _preferences.getString('weather.last_update');
-    return value == null ? null : DateTime.tryParse(value);
-  }
+  String? weatherCache(String cityId) =>
+      _preferences.getString('weather.cache.$cityId');
 
-  Future<void> saveLastWeatherUpdate(DateTime value) {
-    return _preferences.setString(
-      'weather.last_update',
-      value.toIso8601String(),
-    );
-  }
+  Future<void> saveWeatherCache(String cityId, String value) =>
+      _preferences.setString('weather.cache.$cityId', value);
 
-  String? get weatherSnapshot {
-    return _preferences.getString('weather.snapshot');
-  }
+  String? get savedCities => _preferences.getString('cities.v2');
 
-  Future<void> saveWeatherSnapshot(String value) {
-    return _preferences.setString('weather.snapshot', value);
-  }
+  Future<void> saveCities(String value) =>
+      _preferences.setString('cities.v2', value);
 
-  String? get savedCities => _preferences.getString('cities.saved');
+  String? get unitSettings => _preferences.getString('settings.units');
 
-  Future<void> saveCities(String value) {
-    return _preferences.setString('cities.saved', value);
-  }
+  Future<void> saveUnitSettings(String value) =>
+      _preferences.setString('settings.units', value);
 
-  String? get selectedCity => _preferences.getString('cities.selected');
+  String? alertsHistory(String cityId) =>
+      _preferences.getString('alerts.history.$cityId');
 
-  Future<void> saveSelectedCity(String value) {
-    return _preferences.setString('cities.selected', value);
-  }
+  Future<void> saveAlertsHistory(String cityId, String value) =>
+      _preferences.setString('alerts.history.$cityId', value);
 
   bool get alertNotificationsEnabled =>
       _preferences.getBool('alerts.notifications_enabled') ?? false;
 
-  Future<void> saveAlertNotificationsEnabled(bool value) {
-    return _preferences.setBool('alerts.notifications_enabled', value);
-  }
+  Future<void> saveAlertNotificationsEnabled(bool value) =>
+      _preferences.setBool('alerts.notifications_enabled', value);
 }

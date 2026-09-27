@@ -1,61 +1,58 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/alerts/presentation/screens/alerts_screen.dart';
-import '../../features/air_quality/presentation/screens/air_quality_screen.dart';
-import '../../features/astronomy/presentation/screens/astronomy_screen.dart';
 import '../../features/cities/presentation/screens/cities_screen.dart';
-import '../../features/forecast/presentation/screens/hourly_forecast_screen.dart';
-import '../../features/forecast/presentation/screens/daily_forecast_screen.dart';
-import '../../features/forecast/presentation/screens/rain_probability_screen.dart';
-import '../../features/radar/presentation/screens/radar_screen.dart';
-import '../../features/wind/presentation/screens/wind_forecast_screen.dart';
-import '../../features/weather/presentation/screens/weather_home_screen.dart';
+import '../../features/forecast/presentation/screens/forecast_screen.dart';
+import '../../features/map/presentation/screens/map_screen.dart';
+import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/weather/presentation/screens/home_screen.dart';
+import '../shell/app_shell.dart';
+
+abstract final class AppRoutes {
+  static const home = '/';
+  static const forecast = '/forecast';
+  static const map = '/map';
+  static const cities = '/cities';
+  static const settings = '/settings';
+  static const alerts = '/alerts';
+}
+
+final _rootKey = GlobalKey<NavigatorState>();
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  GoRoute tab(String path, Widget screen) => GoRoute(
+    path: path,
+    pageBuilder: (_, _) => NoTransitionPage(child: screen),
+  );
+
   return GoRouter(
-    initialLocation: '/',
+    navigatorKey: _rootKey,
+    initialLocation: AppRoutes.home,
     routes: [
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const WeatherHomeScreen(),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => AppShell(navigationShell: shell),
+        branches: [
+          StatefulShellBranch(
+            routes: [tab(AppRoutes.home, const HomeScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [tab(AppRoutes.forecast, const ForecastScreen())],
+          ),
+          StatefulShellBranch(routes: [tab(AppRoutes.map, const MapScreen())]),
+          StatefulShellBranch(
+            routes: [tab(AppRoutes.cities, const CitiesScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [tab(AppRoutes.settings, const SettingsScreen())],
+          ),
+        ],
       ),
       GoRoute(
-        path: '/alerts',
+        path: AppRoutes.alerts,
+        parentNavigatorKey: _rootKey,
         builder: (context, state) => const AlertsScreen(),
-      ),
-      GoRoute(
-        path: '/cities',
-        builder: (context, state) => const CitiesScreen(),
-      ),
-      GoRoute(
-        path: '/air-quality',
-        builder: (context, state) => const AirQualityScreen(),
-      ),
-      GoRoute(
-        path: '/astronomy',
-        builder: (context, state) => const AstronomyScreen(),
-      ),
-      GoRoute(
-        path: '/forecast/hourly',
-        builder: (context, state) => const HourlyForecastScreen(),
-      ),
-      GoRoute(
-        path: '/forecast/daily',
-        builder: (context, state) => const DailyForecastScreen(),
-      ),
-      GoRoute(
-        path: '/forecast/rain',
-        builder: (context, state) => const RainProbabilityScreen(),
-      ),
-      GoRoute(
-        path: '/radar',
-        builder: (context, state) =>
-            RadarScreen(layer: state.uri.queryParameters['layer'] ?? 'rain'),
-      ),
-      GoRoute(
-        path: '/forecast/wind',
-        builder: (context, state) => const WindForecastScreen(),
       ),
     ],
   );

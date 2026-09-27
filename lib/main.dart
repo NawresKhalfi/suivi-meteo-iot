@@ -1,18 +1,21 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'alerts_page.dart';
+
 import 'app.dart';
 import 'core/storage/local_preferences.dart';
-import 'features/weather/application/weather_controller.dart';
-import 'features/weather/data/weather_repository.dart';
-import 'features/cities/application/cities_controller.dart';
-import 'features/cities/data/cities_store.dart';
+import 'core/theme/app_colors.dart';
+import 'core/theme/app_theme.dart';
 import 'features/alerts/application/alerts_controller.dart';
 import 'features/alerts/data/alerts_repository.dart';
-import 'iot_sensors_page.dart';
+import 'features/cities/application/cities_controller.dart';
+import 'features/cities/data/cities_store.dart';
+import 'features/settings/application/settings_controller.dart';
+import 'features/settings/data/settings_store.dart';
+import 'features/weather/application/weather_controller.dart';
+import 'features/weather/data/weather_cache_store.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -25,33 +28,31 @@ Future<void> main() async {
 }
 
 class _InitData {
-  final SharedPreferences preferences;
-  final FirebaseApp? firebaseApp;
-  _InitData(this.preferences, this.firebaseApp);
+  const _InitData(this.preferences, this.firebaseReady);
+
+  final LocalPreferences preferences;
+  final bool firebaseReady;
 }
 
-// Use a FutureProvider for initialization so ProviderScope stays stable
-final initProvider = FutureProvider<_InitData>((ref) async {
-  final preferences = await SharedPreferences.getInstance();
-  FirebaseApp? firebaseApp;
+final _initProvider = FutureProvider<_InitData>((ref) async {
+  final preferences = LocalPreferences(await SharedPreferences.getInstance());
+  var firebaseReady = false;
   try {
-    firebaseApp = await Firebase.initializeApp();
-    FirebaseMessaging.onBackgroundMessage(
-      _firebaseMessagingBackgroundHandler,
-    );
-    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-  } catch (e, st) {
-    // ignore: avoid_print
-    print('Firebase initialization skipped: $e');
-    // ignore: avoid_print
-    print(st);
-    firebaseApp = null;
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    await FirebaseMessaging.instance
+        .setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+    firebaseReady = true;
+  } on Object catch (error) {
+    // Firebase non configuré (fichiers google-services absents) : l'app
+    // fonctionne sans notifications push.
+    debugPrint('Firebase indisponible : $error');
   }
-  return _InitData(preferences, firebaseApp);
+  return _InitData(preferences, firebaseReady);
 });
 
 class InitApp extends ConsumerWidget {
@@ -59,364 +60,67 @@ class InitApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final init = ref.watch(initProvider);
-    return init.when(
-      loading: () => const MaterialApp(
-        home: Scaffold(body: Center(child: CircularProgressIndicator())),
-      ),
-      error: (e, st) {
-        // ignore: avoid_print
-        print('Init error: $e');
-        return const MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: Text(
-                'Initialisation partielle — certaines fonctionnalités (ex: notifications) sont désactivées.',
-                textAlign: TextAlign.center,
-              ),
-            ),
+    return ref
+        .watch(_initProvider)
+        .when(
+          loading: () => const _Splash(),
+          error: (error, _) => const _Splash(
+            message: 'Initialisation impossible. Relancez l’application.',
           ),
-        );
-      },
-      data: (data) {
-        // Now that init is complete, we can safely provide overrides.
-        return ProviderScope(
-          overrides: [
-            weatherLocalStoreProvider.overrideWithValue(
-              SharedPreferencesWeatherLocalStore(LocalPreferences(data.preferences)),
-            ),
-            citiesStoreProvider.overrideWithValue(
-              SharedPreferencesCitiesStore(LocalPreferences(data.preferences)),
-            ),
-            alertNotificationServiceProvider.overrideWithValue(data.firebaseApp == null
-                ? SharedPreferencesAlertNotificationService(
-                    LocalPreferences(data.preferences),
-                  )
-                : FirebaseAlertNotificationService(LocalPreferences(data.preferences))),
-          ],
-          child: const MeteoApp(),
-        );
-      },
-    );
-  }
-}
-
-class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0.5,
-          iconTheme: const IconThemeData(color: Colors.black87),
-          title: Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF3F8CFF), Color(0xFF60EFFF)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+          data: (data) {
+            final prefs = data.preferences;
+            return ProviderScope(
+              overrides: [
+                citiesStoreProvider.overrideWithValue(
+                  SharedPreferencesCitiesStore(prefs),
                 ),
-                child: const Icon(Icons.cloud, color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Météo',
-                    style: TextStyle(
-                      color: Colors.black87,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    'Surveillance environnementale en temps réel',
-                    style: TextStyle(color: Colors.black54, fontSize: 11),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
+                settingsStoreProvider.overrideWithValue(
+                  SharedPreferencesSettingsStore(prefs),
                 ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE6F6EC),
-                  borderRadius: BorderRadius.circular(20),
+                weatherCacheStoreProvider.overrideWithValue(
+                  SharedPreferencesWeatherCacheStore(prefs),
                 ),
-                child: Row(
-                  children: const [
-                    Icon(Icons.circle, color: Color(0xFF27AE60), size: 10),
-                    SizedBox(width: 6),
-                    Text(
-                      'Connecté',
-                      style: TextStyle(
-                        color: Color(0xFF27AE60),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                alertsHistoryStoreProvider.overrideWithValue(
+                  SharedPreferencesAlertsHistoryStore(prefs),
                 ),
-              ),
-            ],
-          ),
-          bottom: const TabBar(
-            labelColor: Colors.blue,
-            unselectedLabelColor: Colors.black54,
-            indicatorColor: Colors.blue,
-            tabs: [
-              Tab(text: 'Tableau de bord'),
-              Tab(text: 'Capteurs IoT'),
-              Tab(text: 'Alertes'),
-            ],
-          ),
-        ),
-        body: const TabBarView(
-          children: [DashboardTab(), IotSensorsPage(), AlertsPage()],
-        ),
-      ),
-    );
-  }
-}
-
-class DashboardTab extends StatelessWidget {
-  const DashboardTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      children: const [
-        WeatherCard(
-          title: 'Température',
-          value: '21.8',
-          unit: '°C',
-          color: Color(0xFFFF6A3D),
-          icon: Icons.device_thermostat,
-          progress: 0.6,
-        ),
-        WeatherCard(
-          title: 'Humidité',
-          value: '66.5',
-          unit: '%',
-          color: Color(0xFF2D9CDB),
-          icon: Icons.water_drop,
-          progress: 0.7,
-        ),
-        WeatherCard(
-          title: 'Pression',
-          value: '1012.8',
-          unit: 'hPa',
-          color: Color(0xFF9B51E0),
-          icon: Icons.speed,
-          progress: 0.5,
-        ),
-        WeatherCard(
-          title: 'Qualité de l\'air',
-          value: '42',
-          unit: 'AQI',
-          color: Color(0xFF27AE60),
-          icon: Icons.cloud_outlined,
-          progress: 0.4,
-          status: 'Bon',
-        ),
-        WeatherCard(
-          title: 'Vitesse du vent',
-          value: '13.7',
-          unit: 'km/h',
-          color: Color(0xFF2D9CDB),
-          icon: Icons.air,
-          progress: 0.6,
-        ),
-        WeatherCard(
-          title: 'Index UV',
-          value: '5.0',
-          unit: '',
-          color: Color(0xFFFFA726),
-          icon: Icons.wb_sunny_outlined,
-          progress: 0.5,
-        ),
-        SizedBox(height: 8),
-        ChartCard(
-          title: 'Température et Humidité (48h)',
-          subtitle: 'Évolution récente des mesures',
-        ),
-      ],
-    );
-  }
-}
-
-class WeatherCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String unit;
-  final Color color;
-  final IconData icon;
-  final double progress;
-  final String? status;
-
-  const WeatherCard({
-    super.key,
-    required this.title,
-    required this.value,
-    required this.unit,
-    required this.color,
-    required this.icon,
-    required this.progress,
-    this.status,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    gradient: LinearGradient(
-                      colors: [
-                        color.withValues(alpha: 0.95),
-                        color.withValues(alpha: 0.7),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 22),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                const Icon(Icons.more_vert, size: 18, color: Colors.black26),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text(
-                    unit,
-                    style: const TextStyle(fontSize: 14, color: Colors.black54),
-                  ),
-                ),
-                const Spacer(),
-                const Text(
-                  'Live',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.blue,
-                    fontWeight: FontWeight.w600,
-                  ),
+                alertNotificationServiceProvider.overrideWithValue(
+                  data.firebaseReady
+                      ? FirebaseAlertNotificationService(prefs)
+                      : SharedPreferencesAlertNotificationService(prefs),
                 ),
               ],
-            ),
-            if (status != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                status!,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF27AE60),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 6,
-                backgroundColor: Colors.grey.shade200,
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+              child: const MeteoApp(),
+            );
+          },
+        );
   }
 }
 
-class ChartCard extends StatelessWidget {
-  final String title;
-  final String? subtitle;
+class _Splash extends StatelessWidget {
+  const _Splash({this.message});
 
-  const ChartCard({super.key, required this.title, this.subtitle});
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                subtitle!,
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Container(
-              height: 160,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: const Color(0xFFF5F7FB),
-                border: Border.all(color: Colors.grey),
-              ),
-              child: const Center(
-                child: Text(
-                  'Graphique (48h) à implémenter',
-                  style: TextStyle(fontSize: 12, color: Colors.black45),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ],
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      home: Scaffold(
+        body: DecoratedBox(
+          decoration: const BoxDecoration(gradient: AppColors.heroGradient),
+          child: Center(
+            child: message == null
+                ? const CircularProgressIndicator(color: Colors.white)
+                : Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Text(
+                      message!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+          ),
         ),
       ),
     );

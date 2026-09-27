@@ -2,50 +2,57 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/http_client_provider.dart';
+import '../../cities/application/cities_controller.dart';
+import '../data/weather_cache_store.dart';
 import '../data/weather_repository.dart';
-import '../domain/weather_snapshot.dart';
+import '../domain/forecast_bundle.dart';
 
-final weatherRepositoryProvider = Provider<WeatherRepository>((ref) {
-  return DemoWeatherRepository();
-});
+final weatherCacheStoreProvider = Provider<WeatherCacheStore>(
+  (ref) => MemoryWeatherCacheStore(),
+);
 
-final weatherLocalStoreProvider = Provider<WeatherLocalStore>((ref) {
-  return MemoryWeatherLocalStore();
-});
+final weatherRepositoryProvider = Provider<WeatherRepository>(
+  (ref) => OpenMeteoWeatherRepository(
+    ref.watch(httpClientProvider),
+    ref.watch(weatherCacheStoreProvider),
+  ),
+);
 
+/// Prévisions complètes de la ville sélectionnée. Se recharge
+/// automatiquement au changement de ville et toutes les 15 minutes.
 final weatherControllerProvider =
-    NotifierProvider<WeatherController, AsyncValue<WeatherSnapshot>>(
+    AsyncNotifierProvider<WeatherController, ForecastBundle>(
       WeatherController.new,
     );
 
-class WeatherController extends Notifier<AsyncValue<WeatherSnapshot>> {
-  Timer? _refreshTimer;
-
-  WeatherRepository get _repository => ref.read(weatherRepositoryProvider);
-  WeatherLocalStore get _localStore => ref.read(weatherLocalStoreProvider);
+class WeatherController extends AsyncNotifier<ForecastBundle> {
+  static const refreshInterval = Duration(minutes: 15);
 
   @override
-  AsyncValue<WeatherSnapshot> build() {
-    Future.microtask(_load);
-    _refreshTimer = Timer.periodic(const Duration(minutes: 15), (_) => _load());
-    ref.onDispose(() => _refreshTimer?.cancel());
-    return const AsyncValue.loading();
+  Future<ForecastBundle> build() {
+    final city = ref.watch(selectedCityProvider);
+    final timer = Timer.periodic(refreshInterval, (_) => refresh());
+    ref.onDispose(timer.cancel);
+    return ref.read(weatherRepositoryProvider).fetchForecast(city);
   }
 
-  Future<void> refresh() => _load();
-
-  Future<void> _load() async {
-    final previous = state.valueOrNull;
-    if (previous == null) state = const AsyncValue.loading();
-    try {
-      final snapshot = await _repository.fetchCurrentWeather();
-      await _localStore.save(snapshot);
-      state = AsyncValue.data(snapshot);
-    } catch (error, stackTrace) {
-      final cached = _localStore.read();
-      state = cached == null
-          ? AsyncValue.error(error, stackTrace)
-          : AsyncValue.data(cached.copyWith(isOffline: true));
-    }
+  /// Actualisation manuelle (E01 – US04). Garde l'affichage courant pendant
+  /// le chargement et en cas d'erreur.
+  Future<void> refresh() async {
+    final city = ref.read(selectedCityProvider);
+    final result = await AsyncValue.guard(
+      () => ref.read(weatherRepositoryProvider).fetchForecast(city),
+    );
+    if (result.hasError && state.hasValue) return;
+    state = result;
   }
 }
+
+/// Météo actuelle de toutes les villes suivies (écran « Mes villes »).
+final citiesWeatherProvider = FutureProvider<Map<String, CityCurrentWeather>>((
+  ref,
+) {
+  final cities = ref.watch(citiesControllerProvider.select((s) => s.cities));
+  return ref.read(weatherRepositoryProvider).fetchCurrentForCities(cities);
+});

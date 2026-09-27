@@ -21,6 +21,18 @@ class AstronomySnapshot {
   final DateTime sunset;
   final MoonPhase moonPhase;
   final DateTime observedAt;
+
+  Duration get dayLength => sunset.difference(sunrise);
+
+  bool get isDaytime =>
+      observedAt.isAfter(sunrise) && observedAt.isBefore(sunset);
+
+  /// Avancement de la journée entre lever (0) et coucher (1) du soleil.
+  double get dayProgress {
+    final total = dayLength.inMinutes;
+    if (total <= 0) return 0;
+    return (observedAt.difference(sunrise).inMinutes / total).clamp(0.0, 1.0);
+  }
 }
 
 extension MoonPhaseLabels on MoonPhase {

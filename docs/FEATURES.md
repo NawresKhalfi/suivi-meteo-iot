@@ -1,11 +1,17 @@
 ## Suivi des epics
 
+Refonte selon le prototype `weather_prototype.html` (5 onglets : Accueil,
+Prévisions, Carte, Villes, Réglages). Données réelles : Open-Meteo (météo,
+qualité de l'air, géocodage), RainViewer (radar), fonds CARTO/OpenStreetMap.
+Les alertes sont déduites des prévisions (orages, rafales, fortes pluies,
+neige, verglas, chaleur, froid, UV) et historisées 48 h par ville.
+
 Source de vérité : `spec/Epics_UserStories_Meteo.xlsx`.
 
 | Epic | Fonctionnalité | Stories | Statut |
 |---|---|---:|---|
 | E01 | Météo locale en temps réel | US01-US05 | ✅ implémenté |
-| E02 | Alertes météo et catastrophes naturelles | US06-US09 | 🟨 en cours |
+| E02 | Alertes météo et catastrophes naturelles | US06-US09 | 🟨 en cours (push FCM à configurer) |
 | E03 | Prévisions météo sur 24 heures | US10-US12 | ✅ implémenté |
 | E04 | Prévisions météo sur 10 jours | US13-US15 | ✅ implémenté |
 | E05 | Probabilité de pluie sur 10 jours | US16-US17 | ✅ implémenté |
@@ -14,8 +20,8 @@ Source de vérité : `spec/Epics_UserStories_Meteo.xlsx`.
 | E08 | Carte radar météo | US21-US23 | ✅ implémenté |
 | E09 | Lever / coucher du soleil et phases lunaires | US24-US25 | ✅ implémenté |
 | E10 | Gestion des villes | US26-US29 | ✅ implémenté |
-| E11 | Paramètres d'unités et de formats | US30-US32 | ⬜ non démarré |
-| E12 | Notifications et widgets d'écran d'accueil | US33-US34 | ⬜ non démarré |
+| E11 | Paramètres d'unités et de formats | US30-US32 | ✅ implémenté |
+| E12 | Notifications et widgets d'écran d'accueil | US33-US34 | 🟨 réglages + aperçu (widget natif à faire) |
 
 ## E01 - Météo locale en temps réel
 
@@ -95,3 +101,18 @@ Source de vérité : `spec/Epics_UserStories_Meteo.xlsx`.
 | US27 - Sélectionner la ville active | ✅ implémenté |
 | US28 - Gérer les villes favorites | ✅ implémenté |
 | US29 - Supprimer une ville enregistrée | ✅ implémenté |
+
+## E11 - Paramètres d'unités et de formats
+
+| Story | Statut |
+|---|---|
+| US30 - Unités température, précipitations, visibilité, vent, pression | ✅ implémenté |
+| US31 - Format de l'heure (12 h / 24 h) | ✅ implémenté |
+| US32 - Format de date | ✅ implémenté |
+
+## E12 - Notifications et widgets d'écran d'accueil
+
+| Story | Statut |
+|---|---|
+| US33 - Activer/désactiver alertes et résumé quotidien | 🟨 préférences enregistrées ; envoi du résumé non planifié |
+| US34 - Widget d'écran d'accueil | 🟨 aperçu dans Réglages ; widget natif iOS/Android à développer |
